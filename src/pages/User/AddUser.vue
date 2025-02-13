@@ -5,47 +5,44 @@
       <v-btn color="grey" text to="/users">Назад</v-btn>
     </div>
     <br>
-    <v-form @submit.prevent="addUser" v-model="valid">
+    <v-form @submit.prevent="onSubmit">
       <v-text-field
-        v-model="user.name"
+        v-model="name"
         label="Имя"
-        :rules="[nameRules]"
-        required
+        :error-messages="nameError ? [nameError] : []"
       ></v-text-field>
 
       <v-text-field
-        v-model="user.login"
+        v-model="login"
         label="Логин"
-        :rules="[loginRules]"
-        required
+        :error-messages="loginError ? [loginError] : []"
       ></v-text-field>
 
       <v-text-field
-        v-model="user.password"
+        v-model="password"
         label="Пароль"
         type="password"
-        :rules="[passwordRules]"
-        required
+        :error-messages="passwordError ? [passwordError] : []"
       ></v-text-field>
 
       <v-text-field
-        v-model="user.chatId"
+        v-model="chatId"
         label="ID чата"
-        :rules="[chatIdRules]"
-        required
+        type="number"
+        :error-messages="chatIdError ? [chatIdError] : []"
       ></v-text-field>
       
       <v-checkbox v-model="selectedRoles" label="Админ" :value="1"></v-checkbox>
       <v-checkbox v-model="selectedRoles" label="Работник" :value="2"></v-checkbox>
       <v-checkbox v-model="selectedRoles" label="Менеджер" :value="3"></v-checkbox>
 
-      <v-btn type="submit" color="primary" :disabled="!valid">Сохранить</v-btn>
+      <v-btn type="submit" color="primary">Сохранить</v-btn>
     </v-form>
 
     <v-dialog v-model="successDialog" max-width="400px">
       <v-card>
         <v-card-title class="headline">Пользователь создан!</v-card-title>
-        <v-card-text>Пользователь успешно создан с ID: <strong>{{ user.id }}</strong></v-card-text>
+        <v-card-text>Пользователь успешно создан с ID: <strong>{{ userId }}</strong></v-card-text>
         <v-card-actions>
           <v-btn color="blue" text to="/users">ОК</v-btn>
         </v-card-actions>
@@ -56,54 +53,70 @@
 </template>
 
 <script>
+import { useForm, useField } from 'vee-validate';
+import * as yup from 'yup';
 import axios from 'axios';
-import { toRaw } from 'vue';
+import { ref, toRaw } from 'vue';
 
 export default {
-    name: 'AddUser',
-    data() {
-        return {
-            user: {
-                id: null,
-                name: '',
-                login: '',
-                password: '',
-                chatId: '',
-                roles: []
-            },
-            selectedRoles: [],
-            valid: false,
-            successDialog: false,
-            nameRules: [(v) => v && v.length > 0 || 'Имя не может быть пустым'],
-            loginRules: [(v) => v && v.length > 0 || 'Логин не может быть пустым'],
-            passwordRules: [(v) => v && v.length > 0 || 'Пароль не может быть пустым'],
-            chatIdRules: [(v) => !!v && !isNaN(v) || 'ID чата не может быть пустым и должно быть числом']
-        };
-    },
-    methods: {
-        async addUser() {
-            try {
-                const chatId = Number(this.user.chatId);
-                const response = await axios.post(`http://localhost:5009/api/UserWithRoles`, {
-                    "name": this.user.name,
-                    "login": this.user.login,
-                    "password": this.user.password,
-                    "chatId": chatId,
-                    "roleIds": toRaw(this.selectedRoles)
-                });
+  name: 'AddUser',
+  setup() {
+    const schema = yup.object({
+      name: yup.string().required('Имя обязательно'),
+      login: yup.string().required('Логин обязателен'),
+      password: yup.string().min(6, 'Пароль должен содержать минимум 6 символов').required('Пароль обязателен'),
+      chatId: yup.number().typeError('ID чата должно быть числом').required('ID чата обязателен').positive('ID чата должно быть положительным числом').integer('ID чата должно быть целым числом'),
+    });
 
-                console.log(response.data);
+    const { handleSubmit, resetForm, errors } = useForm({
+      validationSchema: schema,
+    });
 
-                if (response.data) {
-                    this.user.id = response.data;
-                    console.log("Создан пользователь с ID:", this.user.id);
-                    this.successDialog = true;
-                }
-            } catch (error) {
-                console.error('Ошибка при сохранении изменений', error);
-            }
+    const { value: name, errorMessage: nameError } = useField('name');
+    const { value: login, errorMessage: loginError } = useField('login');
+    const { value: password, errorMessage: passwordError } = useField('password');
+    const { value: chatId, errorMessage: chatIdError } = useField('chatId');
+    const { value: selectedRoles } = useField('roles');
+
+    const userId = ref(null); 
+    const successDialog = ref(false);
+
+    const onSubmit = handleSubmit(async (values) => {
+      try {
+        const response = await axios.post(`http://localhost:5009/api/UserWithRoles`, {
+          "name": values.name,
+          "login": values.login,
+          "password": values.password,
+          "chatId": Number(values.chatId),
+          "roleIds": Array.isArray(values.selectedRoles) ? toRaw(values.selectedRoles) : [],
+        });
+
+        console.log(response.data);
+
+        if (response.data) {
+          userId.value = response.data; 
+          successDialog.value = true;
         }
-    }
-}
-</script>
+      } catch (error) {
+        console.error('Ошибка при сохранении изменений', error);
+      }
+    });
 
+    return {
+      name,
+      login,
+      password,
+      chatId,
+      selectedRoles,
+      nameError,
+      loginError,
+      passwordError,
+      chatIdError,
+      onSubmit,
+      errors,
+      userId,
+      successDialog
+    };
+  },
+};
+</script>

@@ -96,7 +96,7 @@ export default {
         user.createdAt = this.formatDate(user.createdAt);
         user.lastRevision = this.formatDate(user.lastRevision);
         return user;
-      });
+        });
         this.loading = false;   
       } catch (err) {
         this.error = 'Ошибка загрузки данных';  
@@ -112,9 +112,12 @@ export default {
       if (!this.userIdToDelete) return;
       try {
         await axios.delete(`http://localhost:5009/api/UserWithRoles/${this.userIdToDelete}`);
+        this.loading = true;
         this.dialog = false;
+        this.users = this.users.filter(user => user.id !== this.userIdToDelete);
         this.userIdToDelete = null;
         await this.fetchUsers();
+
       } catch (err) {
         this.error = 'Ошибка при удалении пользователя';
       }
