@@ -2,109 +2,160 @@
   <v-container> 
     <div>
       <h1>Редактировать пользователя</h1>
-      <v-btn color="grey" text to="/users">Назад</v-btn>
     </div>
     <br>
-    <v-form @submit.prevent="editUser" v-model="valid">
-      <v-text-field
-        v-model="user.name"
-        label="Имя"
-        :rules="[nameRules]"
-        required
-      ></v-text-field>
+    <v-form @submit.prevent="editUser">
+      <v-text-field v-model="name" label="Имя" 
+      :error-messages="nameError ? [nameError] : []"></v-text-field>
 
-      <v-text-field
-        v-model="user.login"
-        label="Логин"
-        :rules="[loginRules]"
-        required
-      ></v-text-field>
+      <v-text-field v-model="login" label="Логин" 
+      :error-messages="loginError ? [loginError] : []"></v-text-field>
 
-      <v-text-field
-        v-model="user.password"
-        label="Пароль"
-        type="password"
-        :rules="[passwordRules]"
-        required
-      ></v-text-field>
+      <v-text-field v-model="email" label="Почта" 
+      :error-messages="emailError ? [emailError] : []"></v-text-field>
 
-      <v-text-field
-        v-model="user.chatId"
-        label="ID чата"
-        :rules="[chatIdRules]"
-        required
-      ></v-text-field>
-      
+      <v-btn color="grey" @click="showPasswordField = !showPasswordField" style="margin-bottom: 20px;">
+        {{ showPasswordField ? "Отмена" : "Изменить Пароль" }}
+      </v-btn>
+
+      <v-text-field v-if="showPasswordField" v-model="password" label="Пароль" type="password"
+        :error-messages="passwordError ? [passwordError] : []"></v-text-field>
+
+        <v-text-field v-model="chatId" label="ID чата" type="number"
+        :error-messages="chatIdError ? [chatIdError] : []"></v-text-field>
+
       <v-checkbox v-model="selectedRoles" label="Админ" :value="1"></v-checkbox>
       <v-checkbox v-model="selectedRoles" label="Работник" :value="2"></v-checkbox>
       <v-checkbox v-model="selectedRoles" label="Менеджер" :value="3"></v-checkbox>
 
-      <v-btn type="submit" color="primary" :disabled="!valid">Сохранить</v-btn>
+      <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false" style="margin-bottom: 20px;">
+        Пользователь изменен!
+      </v-alert>
+
+      <div style="display: flex; align-items: center;">
+        <v-btn color="grey" text to="/users" style="margin-right: 20px;">Назад</v-btn>
+        <v-btn type="submit" color="primary">Сохранить</v-btn>
+      </div>
     </v-form>
   </v-container>
 </template>
 
 <script>
+import { useForm, useField } from 'vee-validate';
+import * as yup from 'yup';
 import axios from 'axios';
-import { toRaw } from 'vue';
+import { ref, toRaw, reactive, onMounted } from 'vue';
+import router from '../../router';
+import { useRoute } from "vue-router";
+
 
 export default {
-    props: ['id'],
     name: 'EditUser',
-    data() {
-        return {
-            user: {
-                id: 0,
-                name: '',
-                login: '',
-                password: '',
-                chatId: '',
-                roles: []
-            },
-            selectedRoles: [],
-            valid: false,
-            nameRules: [(v) => v && v.length > 0 || 'Имя не может быть пустым'],
-            loginRules: [(v) => v && v.length > 0 || 'Логин не может быть пустым'],
-            passwordRules: [(v) => v && v.length > 0 || 'Пароль не может быть пустым'],
-            chatIdRules: [(v) => !!v && !isNaN(v) || 'ID чата не может быть пустым и должно быть числом']
-        };
-    },
-    mounted() {
-        this.fetchUser();
-    },
-    methods: {
-        async fetchUser() {
-            try {
-                const response = await axios.get(`http://localhost:5009/api/UserWithRoles/${this.id}`);
-                this.user = response.data;
-                if (this.user && this.user.roles && this.user.roles.length > 0) {
-                    this.selectedRoles = [...this.user.roles];
-                }
+    setup() {
+      const route = useRoute();
+      const userId = route.params.id;
 
-                console.log(this.selectedRoles); 
+      const user = reactive({
+        id: 0,
+        name: "",
+        email: "",
+        login: "",
+        password: "",
+        chatId: "",
+        roles: [],
+      });
 
-            } catch (error) {
-                console.error('Ошибка загрузки данных пользователя', error);
-            }
-        },
-        async editUser() {
-            try {
-                const chatId = Number(this.user.chatId);
+      const schema = yup.object({
+        name: yup.string().required('Имя обязательно'),
+        login: yup.string().required('Логин обязателен').test('unique-login', 'Логин уже существует', async (value) => {
+          console.log(value);
+          if (value === user.login) return true;
+          if (!value) return true;
+          try {
+            const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles/checkLogin/${value}`);
+            console.log(response.data.id);
+            return response.id? true: false; 
+          } catch (error) {
+            console.error('Ошибка при проверке логина:', error);
+            return true;
+          }
+        }),
+        email: yup.string().email('Некорректный формат электронной почты').required('Почта обязательна'),
+        password: yup.string().min(6, 'Пароль должен содержать минимум 6 символов').required('Пароль обязателен'),
+        chatId: yup.number().typeError('ID чата должно быть числом').required('ID чата обязателен').integer('ID чата должно быть целым числом'),
+      });
 
-                await axios.put(`http://localhost:5009/api/UserWithRoles`, {
-                    "id": this.user.id,
-                    "name": this.user.name,
-                    "login": this.user.login,
-                    "password": this.user.password,
-                    "chatId": chatId,
-                    "roleIds": toRaw(this.selectedRoles)
-                });
+      const { handleSubmit, errors } = useForm({
+        validationSchema: schema,
+      });
 
-                this.$router.push({ name: 'Users' }); 
-            } catch (error) {
-                console.error('Ошибка при сохранении изменений', error);
-            }
+      const { value: name, errorMessage: nameError } = useField('name');
+      const { value: login, errorMessage: loginError } = useField('login');
+      const { value: email, errorMessage: emailError } = useField('email');
+      const { value: password, errorMessage: passwordError } = useField('password');
+      const { value: chatId, errorMessage: chatIdError } = useField('chatId');
+      const { value: selectedRoles } = useField('roles');
+
+      const successMessage = ref(false);
+      const showPasswordField = ref(false);
+
+      const fetchUser = async () => {
+        try {
+          const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles/${userId}`);
+          Object.assign(user, response.data);
+          name.value = response.data.name;
+          login.value = response.data.login;
+          email.value = response.data.email;
+          chatId.value = response.data.chatId;
+          selectedRoles.value = response.data.roles || [];
+
+        } catch (error) {
+          console.error("Ошибка загрузки данных пользователя", error);
         }
-    }
+      };
+
+      const editUser = handleSubmit(async () => {
+        try {
+          await axios.put(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles`, {
+            id: user.id,
+            name: name.value,
+            login: login.value,
+            email: email.value,
+            password: password.value,
+            chatId: Number(chatId.value),
+            roleIds: toRaw(selectedRoles.value),
+          });
+
+          successMessage.value = true;
+          setTimeout(() => {
+            successMessage.value = false;
+            router.push("/users");
+          }, 2000);
+        } catch (error) {
+          console.error("Ошибка при сохранении изменений", error);
+        }
+      });
+
+      onMounted(fetchUser);
+
+
+      return {
+        name,
+        login,
+        password,
+        email,
+        chatId,
+        user,
+        nameError,
+        loginError,
+        emailError,
+        passwordError,
+        chatIdError,
+        selectedRoles,
+        showPasswordField,
+        successMessage,
+        editUser,
+      };
+  }
 }
 </script>
