@@ -6,10 +6,21 @@
       <v-btn color="green" text to="/users/add">Добавить</v-btn>
     </div>
     <br>
+    <v-container>
+      <v-row>
+        <v-col cols="12" sm="4" class="pl-0">
+          <v-select v-model="sortBy" :items="sortOptions" item-title="text" item-value="value" label="Сортировать по "
+            outlined @update:modelValue="applySort">
+          </v-select>
+        </v-col>
+      </v-row>
+    </v-container>
     <div style="display: flex; flex-direction: column; justify-content: center; align-items: center;">
-      <v-progress-circular v-if="loading" indeterminate color="primary" style="margin-bottom: 30px;"></v-progress-circular>
+      <v-progress-circular v-if="loading" indeterminate color="primary"
+        style="margin-bottom: 30px;"></v-progress-circular>
       <v-alert v-if="error" type="error" style="margin-bottom: 30px;">{{ error }}</v-alert>
-      <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false" style="margin-bottom: 20px;">
+      <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false"
+        style="margin-bottom: 20px;">
         Пользователь удален!
       </v-alert>
     </div>
@@ -30,7 +41,8 @@
       <tbody>
         <tr v-for="(item) in users" :key="item.id">
           <td>
-            <router-link :to="{ name: 'EditUser', params: { id: item.id } }" style="color:black">{{ item.name }}</router-link>
+            <router-link :to="{ name: 'EditUser', params: { id: item.id } }" style="color:black">{{ item.name
+            }}</router-link>
           </td>
           <td>{{ item.login }}</td>
           <td>{{ item.email }}</td>
@@ -74,13 +86,15 @@
 </template>
 
 <script>
-import {ref, onMounted} from 'vue';
+import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import router from '../../router';
+import { useRoute } from 'vue-router';
+import { watch } from 'vue';
 
 export default {
   name: 'Users',
-  setup(){
+  setup() {
     const users = ref([]);
     const loading = ref(true);
     const error = ref(null);
@@ -93,6 +107,25 @@ export default {
     };
     const successMessage = ref(false);
 
+    const route = useRoute()
+    const sortBy = ref(route.query.sort || 'nameAsc'); 
+
+    const sortOptions = [
+      { text: "По возрастанию имени", value: "nameAsc" },
+      { text: "По убыванию имени", value: "nameDesc" },
+      { text: "По возрастанию email", value: "emailAsc" },
+      { text: "По убыванию email", value: "emailDesc" },
+      { text: "По возрастанию даты создания", value: "createdAtAsc" },
+      { text: "По убыванию даты создания", value: "createdAtDesc" },
+      { text: "По возрастанию даты редактирования", value: "lastRevisionAsc" },
+      { text: "По убыванию даты редактирования", value: "lastRevisionDesc" }
+    ];
+
+    const applySort = async () => {
+      router.push({ query: { ...route.query, sort: sortBy.value } });
+      await fetchUsers();
+    };
+
     const formatDate = (date) => {
       const d = new Date(date);
       const options = {
@@ -102,24 +135,28 @@ export default {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        timeZoneName: 'short' 
+        timeZoneName: 'short'
       };
       return d.toLocaleString('ru-RU', options);
     };
 
-    const fetchUsers = async() =>{
-      try{
-        const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles/List`);
+    const fetchUsers = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles/List`, {
+          params: {
+            sort: sortBy.value, 
+          }
+        });
         users.value = response.data.map(user => {
           user.createdAt = formatDate(user.createdAt);
           user.lastRevision = formatDate(user.lastRevision);
           user.selectedRoles = user.roles.length !== 0 ? user.roles.map(role => roleNames[role]).join(', ') : "Роли нет";
           return user;
         });
-        loading.value = false;   
+        loading.value = false;
       } catch (err) {
         error.value = 'Ошибка загрузки данных';
-        loading.value = false;             
+        loading.value = false;
       }
     };
 
@@ -149,7 +186,24 @@ export default {
       dialog.value = true;
     };
 
-    onMounted(fetchUsers);
+    onMounted(() => {
+      if (route.query.sort) {
+        applySort();
+      } else {
+        fetchUsers();
+      }
+    });
+
+    watch(
+      () => route.query.sort,
+      (newSort) => {
+        if (newSort) {
+          sortBy.value = newSort; 
+          applySort(); 
+        }
+      },
+      { immediate: true } 
+    );
 
     return {
       users,
@@ -162,8 +216,12 @@ export default {
       fetchUsers,
       editUser,
       deleteUser,
-      confirmDelete
+      confirmDelete,
+      sortBy,
+      sortOptions,
+      applySort
     };
   }
 }
+
 </script>
