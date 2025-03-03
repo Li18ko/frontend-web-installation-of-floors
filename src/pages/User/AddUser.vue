@@ -29,13 +29,13 @@
       <v-checkbox v-model="selectedRoles" tabindex="9" label="Менеджер" :value="3"></v-checkbox>
 
       <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false"
-        style="margin-bottom: 20px;">
+        style="position: fixed; top: 20px; right: 20px; z-index: 2401;">
         Пользователь создан!
       </v-alert>
 
       <div style="display: flex; align-items: center;">
-        <v-btn color="grey" text to="/users" tabindex="10" style="margin-right: 20px;">Назад</v-btn>
-        <v-btn type="submit" tabindex="11" color="primary">Сохранить</v-btn>
+        <v-btn type="submit" tabindex="10" color="primary" style="margin-right: 20px;">Сохранить</v-btn>
+        <v-btn color="grey" text to="/users" tabindex="11">Назад</v-btn>
       </div>
     </v-form>
 

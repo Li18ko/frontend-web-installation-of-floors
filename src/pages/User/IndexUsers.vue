@@ -15,15 +15,13 @@
         </v-col>
       </v-row>
     </v-container>
-    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center;">
-      <v-progress-circular v-if="loading" indeterminate color="primary"
-        style="margin-bottom: 30px;"></v-progress-circular>
-      <v-alert v-if="error" type="error" style="margin-bottom: 30px;">{{ error }}</v-alert>
-      <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false"
-        style="margin-bottom: 20px;">
-        Пользователь удален!
-      </v-alert>
-    </div>
+    <v-progress-circular v-if="loading" indeterminate color="primary" 
+        style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000;"></v-progress-circular>
+
+    <v-alert v-if="error" type="error" style="position: fixed; top: 20px; right: 20px; z-index: 2401;">{{ error }}</v-alert>
+
+    <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false"
+        style="position: fixed; top: 20px; right: 20px; z-index: 2401;">Пользователь удален!</v-alert>
 
     <v-table :height="'500px'" :density="'comfortable'" fixed-header>
       <thead>
