@@ -14,12 +14,15 @@
       <v-text-field v-model="email" tabindex="2" label="Почта" 
       :error-messages="emailError ? [emailError] : []"></v-text-field>
 
-      <v-btn color="grey" tabindex="4" @click="showPasswordField = !showPasswordField" style="margin-bottom: 20px;">
+      <v-btn color="grey" tabindex="4" @click="togglePasswordField" style="margin-bottom: 20px;">
         {{ showPasswordField ? "Отмена" : "Изменить Пароль" }}
       </v-btn>
 
       <v-text-field v-if="showPasswordField" v-model="password" label="Пароль" type="password"
         :error-messages="passwordError ? [passwordError] : []"></v-text-field>
+
+      <v-text-field v-if="showPasswordField" v-model="passwordRepeat" label="Подтверждение пароля" type="password"
+        :error-messages="passwordRepeatError ? [passwordRepeatError] : []"></v-text-field>
 
       <v-text-field v-model="chatId" tabindex="5" label="ID чата" type="number"
       :error-messages="chatIdError ? [chatIdError] : []"></v-text-field>
@@ -44,7 +47,7 @@
 import { useForm, useField } from 'vee-validate';
 import * as yup from 'yup';
 import axios from 'axios';
-import { ref, toRaw, reactive, onMounted } from 'vue';
+import { ref, toRaw, reactive, onMounted, watch } from 'vue';
 import router from '../../router';
 import { useRoute } from "vue-router";
 
@@ -66,6 +69,9 @@ export default {
         roles: [],
       });
 
+      const successMessage = ref(false);
+      const showPasswordField = ref(false);
+
       const schema = yup.object({
         name: yup.string().required('Имя обязательно'),
         login: yup.string().required('Логин обязателен').test('unique-login', 'Логин уже существует', async (value) => {
@@ -73,31 +79,43 @@ export default {
           try {
             const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles/isLoginTakenByOtherUser/${userId}/${value}`);
             console.log(response.data);
-            return response.data? false : true; 
+            return !response.data; 
           } catch (error) {
             console.error('Ошибка при проверке логина:', error);
             return true;
           }
         }),
         email: yup.string().email('Некорректный формат электронной почты').required('Почта обязательна'),
-        password: yup.string().min(6, 'Пароль должен содержать минимум 6 символов').notRequired(),
+        password: yup.string().when('showPasswordField', {
+          is: (val) => val === true,
+          then: () => yup.string()
+            .min(6, 'Пароль должен содержать минимум 6 символов')
+            .required('Пароль обязателен'),
+          otherwise: () => yup.string().notRequired()
+        }),
+        passwordRepeat: yup.string().when('showPasswordField', {
+          is: (val) => val === true,
+          then: () => yup.string()
+            .required('Повтор пароля обязателен')
+            .oneOf([yup.ref('password')], 'Пароли должны совпадать'),
+          otherwise: () => yup.string().notRequired(),
+        }),
         chatId: yup.number().typeError('ID чата должно быть числом').required('ID чата обязателен').integer('ID чата должно быть целым числом'),
       });
 
-      const { handleSubmit, errors } = useForm({
-        validationSchema: schema,
+      const { handleSubmit, errors, setValues, resetForm } = useForm({
+        validationSchema: schema
       });
 
       const { value: name, errorMessage: nameError } = useField('name');
       const { value: login, errorMessage: loginError } = useField('login');
       const { value: email, errorMessage: emailError } = useField('email');
       const { value: password, errorMessage: passwordError } = useField('password');
+      const { value: passwordRepeat, errorMessage: passwordRepeatError } = useField('passwordRepeat');
       const { value: chatId, errorMessage: chatIdError } = useField('chatId');
       const { value: selectedRoles } = useField('roles');
 
-      const successMessage = ref(false);
-      const showPasswordField = ref(false);
-
+  
       const fetchUser = async () => {
         try {
           const { data } = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles/${userId}`);
@@ -138,12 +156,30 @@ export default {
         }
       });
 
+      const togglePasswordField = () => {
+        if (showPasswordField.value) {
+          password.value = "";
+          passwordRepeat.value = "";
+        }
+        showPasswordField.value = !showPasswordField.value;
+        setValues({
+          showPasswordField: showPasswordField.value,
+        });
+      };
+
+      watch(showPasswordField, (newValue) => {
+        setValues({
+          showPasswordField: newValue,
+        });
+      });
+
       onMounted(fetchUser);
 
       return {
         name,
         login,
         password,
+        passwordRepeat,
         email,
         chatId,
         user,
@@ -151,12 +187,14 @@ export default {
         loginError,
         emailError,
         passwordError,
+        passwordRepeatError,
         chatIdError,
         selectedRoles,
         showPasswordField,
         successMessage,
         editUser,
-        firstCell
+        firstCell,
+        togglePasswordField
       };
   }
 }
