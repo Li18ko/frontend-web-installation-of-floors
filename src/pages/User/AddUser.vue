@@ -6,35 +6,35 @@
     <br>
 
     <v-form @submit.prevent="addUser">
-      <v-text-field v-model="name" label="Имя" 
+      <v-text-field v-model="name"  ref="firstCell" tabindex="1" label="Имя" 
       :error-messages="nameError ? [nameError] : []"></v-text-field>
 
-      <v-text-field v-model="login" label="Логин" 
+      <v-text-field v-model="login" tabindex="3" label="Логин" 
       :error-messages="loginError ? [loginError] : []"></v-text-field>
 
-      <v-text-field v-model="email" label="Почта" 
+      <v-text-field v-model="email" tabindex="2" label="Почта" 
       :error-messages="emailError ? [emailError] : []"></v-text-field>
 
-      <v-text-field v-model="password" label="Пароль" type="password"
+      <v-text-field v-model="password" tabindex="4" label="Пароль" type="password" autocomplete="off"
         :error-messages="passwordError ? [passwordError] : []"></v-text-field>
 
-      <v-text-field v-model="passwordRepeat" label="Подтверждение пароля" type="password"
+      <v-text-field v-model="passwordRepeat" tabindex="5" label="Подтверждение пароля" type="password"
         :error-messages="passwordRepeatError ? [passwordRepeatError] : []"></v-text-field>
 
-      <v-text-field v-model="chatId" label="ID чата" type="number"
+      <v-text-field v-model="chatId" tabindex="6" label="ID чата" type="number"
         :error-messages="chatIdError ? [chatIdError] : []"></v-text-field>
 
-      <v-checkbox v-model="selectedRoles" label="Админ" :value="1"></v-checkbox>
-      <v-checkbox v-model="selectedRoles" label="Работник" :value="2"></v-checkbox>
-      <v-checkbox v-model="selectedRoles" label="Менеджер" :value="3"></v-checkbox>
+      <v-checkbox v-model="selectedRoles" tabindex="7" label="Админ" :value="1"></v-checkbox>
+      <v-checkbox v-model="selectedRoles" tabindex="8" label="Работник" :value="2"></v-checkbox>
+      <v-checkbox v-model="selectedRoles" tabindex="9" label="Менеджер" :value="3"></v-checkbox>
 
       <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false" style="margin-bottom: 20px;">
         Пользователь создан!
       </v-alert>
 
       <div style="display: flex; align-items: center;">
-        <v-btn color="grey" text to="/users" style="margin-right: 20px;">Назад</v-btn>
-        <v-btn type="submit" color="primary">Сохранить</v-btn>
+        <v-btn color="grey" text to="/users" tabindex="10" style="margin-right: 20px;">Назад</v-btn>
+        <v-btn type="submit" tabindex="11" color="primary">Сохранить</v-btn>
       </div>
     </v-form>
 
@@ -45,21 +45,20 @@
 import { useForm, useField } from 'vee-validate';
 import * as yup from 'yup';
 import axios from 'axios';
-import { ref, toRaw } from 'vue';
+import { ref, toRaw, onMounted } from 'vue';
 import router from '../../router';
 
 export default {
   name: 'AddUser',
   setup() {
+    const firstCell = ref(null);
     const schema = yup.object({
       name: yup.string().required('Имя обязательно'),
       login: yup.string().required('Логин обязателен').test('unique-login', 'Логин уже существует', async (value) => {
         console.log(value);
-        if (!value) return true;
         try {
-          const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles/checkLogin/${value}`);
-          console.log(response.data.id);
-          return response.id? true: false; 
+          const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles/IsLoginTakenAsync/${value}`);
+          return response.data? false : true; 
         } catch (error) {
           console.error('Ошибка при проверке логина:', error);
           return true;
@@ -113,6 +112,10 @@ export default {
       }
     });
 
+    onMounted(() => {
+      firstCell.value.focus();
+    });
+
     return {
       name,
       login,
@@ -130,7 +133,8 @@ export default {
       addUser,
       errors,
       userId,
-      successMessage
+      successMessage,
+      firstCell
     };
   },
 };

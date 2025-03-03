@@ -5,36 +5,36 @@
     </div>
     <br>
     <v-form @submit.prevent="editUser">
-      <v-text-field v-model="name" label="Имя" 
+      <v-text-field v-model="name" ref="firstCell" tabindex="1" label="Имя" 
       :error-messages="nameError ? [nameError] : []"></v-text-field>
 
-      <v-text-field v-model="login" label="Логин" 
+      <v-text-field v-model="login" tabindex="3" label="Логин" 
       :error-messages="loginError ? [loginError] : []"></v-text-field>
 
-      <v-text-field v-model="email" label="Почта" 
+      <v-text-field v-model="email" tabindex="2" label="Почта" 
       :error-messages="emailError ? [emailError] : []"></v-text-field>
 
-      <v-btn color="grey" @click="showPasswordField = !showPasswordField" style="margin-bottom: 20px;">
+      <v-btn color="grey" tabindex="4" @click="showPasswordField = !showPasswordField" style="margin-bottom: 20px;">
         {{ showPasswordField ? "Отмена" : "Изменить Пароль" }}
       </v-btn>
 
       <v-text-field v-if="showPasswordField" v-model="password" label="Пароль" type="password"
         :error-messages="passwordError ? [passwordError] : []"></v-text-field>
 
-        <v-text-field v-model="chatId" label="ID чата" type="number"
-        :error-messages="chatIdError ? [chatIdError] : []"></v-text-field>
+      <v-text-field v-model="chatId" tabindex="5" label="ID чата" type="number"
+      :error-messages="chatIdError ? [chatIdError] : []"></v-text-field>
 
-      <v-checkbox v-model="selectedRoles" label="Админ" :value="1"></v-checkbox>
-      <v-checkbox v-model="selectedRoles" label="Работник" :value="2"></v-checkbox>
-      <v-checkbox v-model="selectedRoles" label="Менеджер" :value="3"></v-checkbox>
+      <v-checkbox v-model="selectedRoles" tabindex="6" label="Админ" :value="1"></v-checkbox>
+      <v-checkbox v-model="selectedRoles" tabindex="7" label="Работник" :value="2"></v-checkbox>
+      <v-checkbox v-model="selectedRoles" tabindex="8" label="Менеджер" :value="3"></v-checkbox>
 
       <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false" style="margin-bottom: 20px;">
         Пользователь изменен!
       </v-alert>
 
       <div style="display: flex; align-items: center;">
-        <v-btn color="grey" text to="/users" style="margin-right: 20px;">Назад</v-btn>
-        <v-btn type="submit" color="primary">Сохранить</v-btn>
+        <v-btn color="grey" text to="/users" tabindex="9" style="margin-right: 20px;">Назад</v-btn>
+        <v-btn type="submit" tabindex="10" color="primary">Сохранить</v-btn>
       </div>
     </v-form>
   </v-container>
@@ -54,6 +54,7 @@ export default {
     setup() {
       const route = useRoute();
       const userId = route.params.id;
+      const firstCell = ref(null);
 
       const user = reactive({
         id: 0,
@@ -69,19 +70,17 @@ export default {
         name: yup.string().required('Имя обязательно'),
         login: yup.string().required('Логин обязателен').test('unique-login', 'Логин уже существует', async (value) => {
           console.log(value);
-          if (value === user.login) return true;
-          if (!value) return true;
           try {
-            const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles/checkLogin/${value}`);
-            console.log(response.data.id);
-            return response.id? true: false; 
+            const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles/isLoginTakenByOtherUser/${userId}/${value}`);
+            console.log(response.data);
+            return response.data? false : true; 
           } catch (error) {
             console.error('Ошибка при проверке логина:', error);
             return true;
           }
         }),
         email: yup.string().email('Некорректный формат электронной почты').required('Почта обязательна'),
-        password: yup.string().min(6, 'Пароль должен содержать минимум 6 символов').required('Пароль обязателен'),
+        password: yup.string().min(6, 'Пароль должен содержать минимум 6 символов').notRequired(),
         chatId: yup.number().typeError('ID чата должно быть числом').required('ID чата обязателен').integer('ID чата должно быть целым числом'),
       });
 
@@ -101,14 +100,17 @@ export default {
 
       const fetchUser = async () => {
         try {
-          const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles/${userId}`);
-          Object.assign(user, response.data);
-          name.value = response.data.name;
-          login.value = response.data.login;
-          email.value = response.data.email;
-          chatId.value = response.data.chatId;
-          selectedRoles.value = response.data.roles || [];
-
+          const { data } = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles/${userId}`);
+          Object.assign(user, data);
+          
+          name.value = data.name;
+          login.value = data.login;
+          email.value = data.email;
+          chatId.value = data.chatId;
+          selectedRoles.value = data.roles || [];
+          if (firstCell.value) {
+            firstCell.value.focus();
+          }
         } catch (error) {
           console.error("Ошибка загрузки данных пользователя", error);
         }
@@ -121,7 +123,7 @@ export default {
             name: name.value,
             login: login.value,
             email: email.value,
-            password: password.value,
+            password: password.value || "",
             chatId: Number(chatId.value),
             roleIds: toRaw(selectedRoles.value),
           });
@@ -137,7 +139,6 @@ export default {
       });
 
       onMounted(fetchUser);
-
 
       return {
         name,
@@ -155,6 +156,7 @@ export default {
         showPasswordField,
         successMessage,
         editUser,
+        firstCell
       };
   }
 }
