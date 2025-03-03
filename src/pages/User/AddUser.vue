@@ -6,14 +6,14 @@
     <br>
 
     <v-form @submit.prevent="addUser">
-      <v-text-field v-model="name"  ref="firstCell" tabindex="1" label="Имя" 
-      :error-messages="nameError ? [nameError] : []"></v-text-field>
+      <v-text-field v-model="name" ref="firstCell" tabindex="1" label="Имя"
+        :error-messages="nameError ? [nameError] : []"></v-text-field>
 
-      <v-text-field v-model="login" tabindex="3" label="Логин" 
-      :error-messages="loginError ? [loginError] : []"></v-text-field>
+      <v-text-field v-model="login" tabindex="3" label="Логин"
+        :error-messages="loginError ? [loginError] : []"></v-text-field>
 
-      <v-text-field v-model="email" tabindex="2" label="Почта" 
-      :error-messages="emailError ? [emailError] : []"></v-text-field>
+      <v-text-field v-model="email" tabindex="2" label="Почта"
+        :error-messages="emailError ? [emailError] : []"></v-text-field>
 
       <v-text-field v-model="password" tabindex="4" label="Пароль" type="password" autocomplete="off"
         :error-messages="passwordError ? [passwordError] : []"></v-text-field>
@@ -28,7 +28,8 @@
       <v-checkbox v-model="selectedRoles" tabindex="8" label="Работник" :value="2"></v-checkbox>
       <v-checkbox v-model="selectedRoles" tabindex="9" label="Менеджер" :value="3"></v-checkbox>
 
-      <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false" style="margin-bottom: 20px;">
+      <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false"
+        style="margin-bottom: 20px;">
         Пользователь создан!
       </v-alert>
 
@@ -58,13 +59,23 @@ export default {
         console.log(value);
         try {
           const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles/IsLoginTakenAsync/${value}`);
-          return response.data? false : true; 
+          return !response.data;
         } catch (error) {
           console.error('Ошибка при проверке логина:', error);
           return true;
         }
       }),
-      email: yup.string().email('Некорректный формат электронной почты').required('Почта обязательна'),
+      email: yup.string().email('Некорректный формат электронной почты').required('Почта обязательна')
+        .test('unique-email', 'Почта уже существует', async (value) => {
+          console.log(value);
+          try {
+            const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles/IsEmailTakenAsync/${value}`);
+            return !response.data;
+          } catch (error) {
+            console.error('Ошибка при проверке почты:', error);
+            return true;
+          }
+        }),
       password: yup.string().min(6, 'Пароль должен содержать минимум 6 символов').required('Пароль обязателен'),
       passwordRepeat: yup.string().required('Повтор пароля обязателен').oneOf([yup.ref('password')], 'Пароли должны совпадать'),
       chatId: yup.number().typeError('ID чата должно быть числом').required('ID чата обязателен'),
@@ -104,7 +115,7 @@ export default {
           userId.value = response.data;
           successMessage.value = true;
           setTimeout(() => {
-            router.push({ name: 'Users' }); 
+            router.push({ name: 'Users' });
           }, 2000);
         }
       } catch (error) {
