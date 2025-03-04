@@ -4,42 +4,63 @@
       <h1>Добавить пользователя</h1>
     </div>
     <br>
-
     <v-form @submit.prevent="addUser">
-      <v-text-field v-model="name" ref="firstCell" tabindex="1" label="Имя"
-        :error-messages="nameError ? [nameError] : []"></v-text-field>
+      <v-row>
+        <v-col cols="12" sm="6">
+          <v-text-field v-model="name" ref="firstCell" tabindex="1" label="Имя"
+          :error-messages="nameError ? [nameError] : []"></v-text-field>
+        </v-col>
 
-      <v-text-field v-model="login" tabindex="3" label="Логин"
-        :error-messages="loginError ? [loginError] : []"></v-text-field>
+        <v-col cols="12" sm="6">
+          <v-text-field v-model="login" tabindex="3" label="Логин"
+          :error-messages="loginError ? [loginError] : []"></v-text-field>
+        </v-col>
+      </v-row>
 
-      <v-text-field v-model="email" tabindex="2" label="Почта"
-        :error-messages="emailError ? [emailError] : []"></v-text-field>
+      <v-row>
+        <v-col cols="12" sm="6">
+          <v-text-field v-model="email" tabindex="2" label="Почта"
+          :error-messages="emailError ? [emailError] : []"></v-text-field>
+        </v-col>
 
-      <v-text-field v-model="password" tabindex="4" label="Пароль" type="password" autocomplete="off"
-        :error-messages="passwordError ? [passwordError] : []"></v-text-field>
+        <v-col cols="12" sm="6" >
+          <v-text-field v-model="chatId" tabindex="6" label="ID чата" type="number"
+          :error-messages="chatIdError ? [chatIdError] : []"></v-text-field>
+        </v-col>
+      </v-row>
 
-      <v-text-field v-model="passwordRepeat" tabindex="5" label="Подтверждение пароля" type="password"
-        :error-messages="passwordRepeatError ? [passwordRepeatError] : []"></v-text-field>
+      <v-row>
+        <v-col cols="12" sm="6">
+          <v-text-field v-model="password" tabindex="4" label="Пароль" type="password" autocomplete="off"
+          :error-messages="passwordError ? [passwordError] : []"></v-text-field>
+        </v-col>
 
-      <v-text-field v-model="chatId" tabindex="6" label="ID чата" type="number"
-        :error-messages="chatIdError ? [chatIdError] : []"></v-text-field>
+        <v-col cols="12" sm="6" >
+          <v-text-field v-model="passwordRepeat" tabindex="5" label="Подтверждение пароля" type="password"
+          :error-messages="passwordRepeatError ? [passwordRepeatError] : []"></v-text-field>
+        </v-col>
+      </v-row>
 
-      <v-combobox
-        v-model="selectedRoles"
-        :items="roles"
-        item-title="text"
-        item-value="value"
-        label="Выберите роли"
-        multiple
-        chips
-        tabindex="7"
-      >
-        <template v-slot:selection="{ item }">
-          <v-chip>
-            {{ item.text }}
-          </v-chip>
-        </template>
-      </v-combobox>
+      <v-row>
+        <v-col cols="12" sm="12">
+          <v-combobox
+            v-model="selectedRoles"
+            :items="roles"
+            item-title="text"
+            item-value="value"
+            label="Выберите роли"
+            multiple
+            chips
+            tabindex="7"
+          >
+            <template v-slot:selection="{ item }">
+              <v-chip>
+                {{ item.text }}
+              </v-chip>
+            </template>
+          </v-combobox>
+        </v-col>
+      </v-row>
 
       <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false"
         style="position: fixed; top: 20px; right: 20px; z-index: 2401;">
