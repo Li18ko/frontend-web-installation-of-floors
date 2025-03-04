@@ -8,6 +8,16 @@
     <br>
     <v-container>
       <v-row>
+        <v-col cols="12" sm="8" class="pl-0">
+          <v-text-field
+            v-model="searchQuery"
+            label="Поиск по имени, логину или почте"
+            outlined
+            @input="searchUsers"
+          ></v-text-field>
+        </v-col>
+      </v-row>
+      <v-row>
         <v-col cols="12" sm="4" class="pl-0">
           <v-select v-model="sortBy" :items="sortOptions" item-title="text" item-value="value" label="Сортировать по "
             outlined @update:modelValue="applySort">
@@ -124,10 +134,12 @@ export default {
       { text: 'Worker', value: 2 },
       { text: 'Manager', value: 3 },
     ]);
+    const searchQuery = ref('');
 
     const route = useRoute()
     const sortBy = ref(route.query.sort || 'nameAsc'); 
     const filterRole = ref(route.query.filter || ' '); 
+    
 
     const sortOptions = [
       { text: "По возрастанию имени", value: "nameAsc" },
@@ -151,6 +163,19 @@ export default {
       await fetchUsers();
     };
 
+    const searchUsers = async () => {
+      const searchParam = searchQuery.value.trim();
+
+      router.push({
+        query: {
+          ...route.query,
+          search: searchParam
+        }
+      });
+
+      await fetchUsers();
+    };
+
     const formatDate = (date) => {
       const d = new Date(date);
       const options = {
@@ -170,7 +195,8 @@ export default {
         const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles/List`, {
           params: {
             sort: sortBy.value, 
-            filter: selectedRoles.value.length > 0 ? selectedRoles.value.map(role => role.text).join(',') : ''
+            filter: selectedRoles.value.length > 0 ? selectedRoles.value.map(role => role.text).join(',') : '',
+            search: searchQuery.value.trim()
           }
         });
         users.value = response.data.map(user => {
@@ -213,6 +239,9 @@ export default {
     };
 
     onMounted(() => {
+      if (route.query.search) {
+        searchQuery.value = route.query.search;
+      }
       if (route.query.sort) applySort();
       if (route.query.filter) {
         selectedRoles.value = route.query.filter.split(',').map(roleText =>
@@ -223,14 +252,12 @@ export default {
     });
 
     watch(
-      () => route.query.filter,
-      async (newFilter) => {
-        if (newFilter) {
-          selectedRoles.value = newFilter.split(',').map(roleText =>
-            roles.value.find(role => role.text === roleText) || { text: roleText, value: null }
-          );
+      () => route.query.search,
+      async (newSearch) => {
+        if (newSearch) {
+          searchQuery.value = newSearch;
         } else {
-          selectedRoles.value = [];
+          searchQuery.value = '';
         }
         fetchUsers();
       },
@@ -255,7 +282,9 @@ export default {
       roles,
       selectedRoles,
       filterRoles,
-      filterRole
+      filterRole,
+      searchQuery,
+      searchUsers
     };
   }
 }
