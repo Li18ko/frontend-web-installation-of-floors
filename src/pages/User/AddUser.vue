@@ -24,9 +24,22 @@
       <v-text-field v-model="chatId" tabindex="6" label="ID чата" type="number"
         :error-messages="chatIdError ? [chatIdError] : []"></v-text-field>
 
-      <v-checkbox v-model="selectedRoles" tabindex="7" label="Админ" :value="1"></v-checkbox>
-      <v-checkbox v-model="selectedRoles" tabindex="8" label="Работник" :value="2"></v-checkbox>
-      <v-checkbox v-model="selectedRoles" tabindex="9" label="Менеджер" :value="3"></v-checkbox>
+      <v-combobox
+        v-model="selectedRoles"
+        :items="roles"
+        item-title="text"
+        item-value="value"
+        label="Выберите роли"
+        multiple
+        chips
+        tabindex="7"
+      >
+        <template v-slot:selection="{ item }">
+          <v-chip>
+            {{ item.text }}
+          </v-chip>
+        </template>
+      </v-combobox>
 
       <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false"
         style="position: fixed; top: 20px; right: 20px; z-index: 2401;">
@@ -34,8 +47,8 @@
       </v-alert>
 
       <div style="display: flex; align-items: center;">
-        <v-btn type="submit" tabindex="10" color="primary" style="margin-right: 20px;">Сохранить</v-btn>
-        <v-btn color="grey" text to="/users" tabindex="11">Назад</v-btn>
+        <v-btn type="submit" tabindex="8" color="primary" style="margin-right: 20px;">Сохранить</v-btn>
+        <v-btn color="grey" text to="/users" tabindex="9">Назад</v-btn>
       </div>
     </v-form>
 
@@ -46,13 +59,20 @@
 import { useForm, useField } from 'vee-validate';
 import * as yup from 'yup';
 import axios from 'axios';
-import { ref, toRaw, onMounted } from 'vue';
+import { ref, toRaw, onMounted, computed } from 'vue';
 import router from '../../router';
 
 export default {
   name: 'AddUser',
   setup() {
     const firstCell = ref(null);
+    const selectedRoles = ref([]);
+    const roles = ref([
+      { text: 'Admin', value: 1 },
+      { text: 'Worker', value: 2 },
+      { text: 'Manager', value: 3 },
+    ]);
+
     const schema = yup.object({
       name: yup.string().required('Имя обязательно'),
       login: yup.string().required('Логин обязателен').test('unique-login', 'Логин уже существует', async (value) => {
@@ -91,22 +111,19 @@ export default {
     const { value: password, errorMessage: passwordError } = useField('password');
     const { value: passwordRepeat, errorMessage: passwordRepeatError } = useField('passwordRepeat');
     const { value: chatId, errorMessage: chatIdError } = useField('chatId');
-    const selectedRoles = ref([]);
 
     const userId = ref(null);
     const successMessage = ref(false);
 
     const addUser = handleSubmit(async (values) => {
       try {
-        console.log(toRaw(values.selectedRoles) || []);
-
         const response = await axios.post(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles`, {
           name: values.name,
           login: values.login,
           email: values.email,
           password: values.password,
           chatId: Number(values.chatId),
-          roleIds: selectedRoles.value,
+          roleIds: selectedRoles.value.map(role => role.value),
         });
 
         console.log(response.data);
@@ -145,7 +162,8 @@ export default {
       errors,
       userId,
       successMessage,
-      firstCell
+      firstCell,
+      roles
     };
   },
 };

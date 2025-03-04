@@ -13,6 +13,25 @@
             outlined @update:modelValue="applySort">
           </v-select>
         </v-col>
+
+        <v-col cols="12" sm="4">
+          <v-combobox
+            v-model="selectedRoles"
+            :items="roles"
+            item-title="text"
+            item-value="value"
+            label="Выберите роли"
+            multiple
+            chips
+            @update:modelValue="filterRoles"
+          >
+            <template v-slot:selection="{ item }">
+              <v-chip>
+                {{ item.text }}
+              </v-chip>
+            </template>
+          </v-combobox>
+        </v-col>
       </v-row>
     </v-container>
     <v-progress-circular v-if="loading" indeterminate color="primary" 
@@ -84,11 +103,10 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import axios from 'axios';
 import router from '../../router';
 import { useRoute } from 'vue-router';
-import { watch } from 'vue';
 
 export default {
   name: 'Users',
@@ -98,15 +116,18 @@ export default {
     const error = ref(null);
     const dialog = ref(false);
     const userIdToDelete = ref(null);
-    const roleNames = {
-      1: "Админ",
-      2: "Работник",
-      3: "Менеджер"
-    };
     const successMessage = ref(false);
+
+    const selectedRoles = ref([]);
+    const roles = ref([
+      { text: 'Admin', value: 1 },
+      { text: 'Worker', value: 2 },
+      { text: 'Manager', value: 3 },
+    ]);
 
     const route = useRoute()
     const sortBy = ref(route.query.sort || 'nameAsc'); 
+    const filterRole = ref(route.query.filter || ' '); 
 
     const sortOptions = [
       { text: "По возрастанию имени", value: "nameAsc" },
@@ -121,6 +142,12 @@ export default {
 
     const applySort = async () => {
       router.push({ query: { ...route.query, sort: sortBy.value } });
+      await fetchUsers();
+    };
+
+    const filterRoles = async () => {
+      const selectedRoleTexts = selectedRoles.value.length > 0 ? selectedRoles.value.map(role => role.text).join(',') : '';
+      router.push({ query: { ...route.query, filter: selectedRoleTexts } });
       await fetchUsers();
     };
 
@@ -143,12 +170,13 @@ export default {
         const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles/List`, {
           params: {
             sort: sortBy.value, 
+            filter: selectedRoles.value.length > 0 ? selectedRoles.value.map(role => role.text).join(',') : ''
           }
         });
         users.value = response.data.map(user => {
           user.createdAt = formatDate(user.createdAt);
           user.lastRevision = formatDate(user.lastRevision);
-          user.selectedRoles = user.roles.length !== 0 ? user.roles.map(role => roleNames[role]).join(', ') : "Роли нет";
+          user.selectedRoles = user.roles.length !== 0 ? user.roles.join(', ') : "Роли нет";
           return user;
         });
         loading.value = false;
@@ -185,22 +213,28 @@ export default {
     };
 
     onMounted(() => {
-      if (route.query.sort) {
-        applySort();
-      } else {
-        fetchUsers();
+      if (route.query.sort) applySort();
+      if (route.query.filter) {
+        selectedRoles.value = route.query.filter.split(',').map(roleText =>
+          roles.value.find(role => role.text === roleText) || { text: roleText, value: null }
+        );
       }
+      fetchUsers();
     });
 
     watch(
-      () => route.query.sort,
-      (newSort) => {
-        if (newSort) {
-          sortBy.value = newSort; 
-          applySort(); 
+      () => route.query.filter,
+      async (newFilter) => {
+        if (newFilter) {
+          selectedRoles.value = newFilter.split(',').map(roleText =>
+            roles.value.find(role => role.text === roleText) || { text: roleText, value: null }
+          );
+        } else {
+          selectedRoles.value = [];
         }
+        fetchUsers();
       },
-      { immediate: true } 
+      { immediate: true }
     );
 
     return {
@@ -217,7 +251,11 @@ export default {
       confirmDelete,
       sortBy,
       sortOptions,
-      applySort
+      applySort,
+      roles,
+      selectedRoles,
+      filterRoles,
+      filterRole
     };
   }
 }

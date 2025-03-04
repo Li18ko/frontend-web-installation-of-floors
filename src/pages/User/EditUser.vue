@@ -27,9 +27,22 @@
       <v-text-field v-model="chatId" tabindex="5" label="ID чата" type="number"
         :error-messages="chatIdError ? [chatIdError] : []"></v-text-field>
 
-      <v-checkbox v-model="selectedRoles" tabindex="6" label="Админ" :value="1"></v-checkbox>
-      <v-checkbox v-model="selectedRoles" tabindex="7" label="Работник" :value="2"></v-checkbox>
-      <v-checkbox v-model="selectedRoles" tabindex="8" label="Менеджер" :value="3"></v-checkbox>
+      <v-combobox
+        v-model="selectedRoles"
+        :items="roles"
+        item-title="text"
+        item-value="value"
+        label="Выберите роли"
+        multiple
+        chips
+        tabindex="6"
+      >
+        <template v-slot:selection="{ item }">
+          <v-chip>
+            {{ item.text }}
+          </v-chip>
+        </template>
+      </v-combobox>
 
       <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false"
         style="position: fixed; top: 20px; right: 20px; z-index: 2401;">
@@ -37,8 +50,8 @@
       </v-alert>
 
       <div style="display: flex; align-items: center;">
-        <v-btn type="submit" tabindex="9" color="primary" style="margin-right: 20px;">Сохранить</v-btn>
-        <v-btn color="grey" text to="/users" tabindex="10">Назад</v-btn>
+        <v-btn type="submit" tabindex="7" color="primary" style="margin-right: 20px;">Сохранить</v-btn>
+        <v-btn color="grey" text to="/users" tabindex="8">Назад</v-btn>
       </div>
     </v-form>
   </v-container>
@@ -59,6 +72,11 @@ export default {
     const route = useRoute();
     const userId = route.params.id;
     const firstCell = ref(null);
+    const roles = ref([
+      { text: 'Admin', value: 1 },
+      { text: 'Worker', value: 2 },
+      { text: 'Manager', value: 3 },
+    ]);
 
     const user = reactive({
       id: 0,
@@ -137,9 +155,9 @@ export default {
         login.value = data.login;
         email.value = data.email;
         chatId.value = data.chatId;
-        selectedRoles.value = data.roles || [];
+        selectedRoles.value = roles.value.filter(role => data.roles.includes(role.text));
         if (firstCell.value) {
-          firstCell.value.focus();
+          firstCell.value.focus(); 
         }
       } catch (error) {
         console.error("Ошибка загрузки данных пользователя", error);
@@ -155,7 +173,7 @@ export default {
           email: email.value,
           password: password.value || "",
           chatId: Number(chatId.value),
-          roleIds: toRaw(selectedRoles.value),
+          roleIds: selectedRoles.value.map(role => role.value)
         });
 
         successMessage.value = true;
@@ -206,7 +224,8 @@ export default {
       successMessage,
       editUser,
       firstCell,
-      togglePasswordField
+      togglePasswordField,
+      roles
     };
   }
 }
