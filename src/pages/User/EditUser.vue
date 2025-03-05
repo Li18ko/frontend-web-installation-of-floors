@@ -91,11 +91,7 @@ export default {
     const route = useRoute();
     const userId = route.params.id;
     const firstCell = ref(null);
-    const roles = ref([
-      { text: 'Admin', value: 1 },
-      { text: 'Worker', value: 2 },
-      { text: 'Manager', value: 3 },
-    ]);
+    const roles = ref([]);
 
     const user = reactive({
       id: 0,
@@ -164,6 +160,17 @@ export default {
     const { value: chatId, errorMessage: chatIdError } = useField('chatId');
     const { value: selectedRoles } = useField('roles');
 
+    const fetchRoles = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/RoleWithFunctions/List`);
+        roles.value = response.data.map(role => ({
+          text: role.name,
+          value: role.id
+        }));
+      } catch (error) {
+        console.error("Ошибка при загрузке ролей:", error);
+      }
+    };
 
     const fetchUser = async () => {
       try {
@@ -222,7 +229,10 @@ export default {
       });
     });
 
-    onMounted(fetchUser);
+    onMounted(() => {
+      fetchUser();
+      fetchRoles();
+    });
 
     return {
       name,
