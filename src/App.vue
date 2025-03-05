@@ -9,6 +9,7 @@ export default{
     <v-app-bar app class="pl-4 pr-4">
       <v-btn text to="/tasks">Задачи</v-btn>
       <v-btn text to="/users">Пользователи</v-btn>
+      <v-btn text to="/roles">Роли</v-btn>
     </v-app-bar>
 
     <v-main>
