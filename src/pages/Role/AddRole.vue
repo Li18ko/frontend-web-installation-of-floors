@@ -11,6 +11,13 @@
             :error-messages="nameError ? [nameError] : []"></v-text-field>
           </v-col>
         </v-row>
+
+        <v-row>
+          <v-col cols="12" sm="6">
+            <v-text-field v-model="description" tabindex="2" label="Описание роли"
+            :error-messages="descriptionError ? [descriptionError] : []"></v-text-field>
+          </v-col>
+        </v-row>
   
         <v-checkbox v-model="isActive" label="Активность"></v-checkbox>
   
@@ -24,7 +31,7 @@
               label="Выберите функции"
               multiple
               chips
-              tabindex="2"
+              tabindex="3"
             >
               <template v-slot:selection="{ item }">
                 <v-chip>
@@ -41,8 +48,8 @@
         </v-alert>
   
         <div style="display: flex; align-items: center;">
-          <v-btn type="submit" tabindex="3" color="primary" style="margin-right: 20px;">Сохранить</v-btn>
-          <v-btn color="grey" text to="/roles" tabindex="4">Назад</v-btn>
+          <v-btn type="submit" tabindex="4" color="primary" style="margin-right: 20px;">Сохранить</v-btn>
+          <v-btn color="grey" text to="/roles" tabindex="5">Назад</v-btn>
         </div>
       </v-form>
   
@@ -67,6 +74,7 @@
   
       const schema = yup.object({
         name: yup.string().required('Название роли обязательно'),
+        description: yup.string().required('Описание роли обязательно'),
       });
   
       const { handleSubmit, errors } = useForm({
@@ -74,11 +82,13 @@
       });
   
       const { value: name, errorMessage: nameError } = useField('name');
+      const { value: description, errorMessage: descriptionError } = useField('description');
   
       const addRole = handleSubmit(async () => {
         try {
-          const response = await axios.post(`${import.meta.env.VITE_APP_BASE_URL}/api/RoleWithFunctions`, {
+          const response = await axios.post(`${import.meta.env.VITE_APP_BASE_URL}/api/Role`, {
             name: name.value,
+            description: description.value,
             active: isActive.value,
             functionIds: selectedFunctions.value.map(func => func.value),
           });
@@ -96,7 +106,7 @@
   
       const fetchFunctions = async () => {
         try {
-          const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/RoleWithFunctions/ListFunctions`);
+          const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/ListFunctions`);
           functions.value = response.data.map(func => ({
             text: func.name,
             value: func.id
@@ -113,8 +123,10 @@
   
       return {
         name,
+        description,
         nameError,
-        isActive,
+        descriptionError,
+        isActive, 
         selectedFunctions,
         functions,
         successMessage,

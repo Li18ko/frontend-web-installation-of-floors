@@ -16,13 +16,6 @@
             @input="searchUsers"
           ></v-text-field>
         </v-col>
-      </v-row>
-      <v-row>
-        <v-col cols="12" sm="4" class="pl-0">
-          <v-select v-model="sortBy" :items="sortOptions" item-title="text" item-value="value" label="Сортировать по "
-            outlined @update:modelValue="applySort">
-          </v-select>
-        </v-col>
 
         <v-col cols="12" sm="4">
           <v-combobox
@@ -45,58 +38,60 @@
       </v-row>
     </v-container>
     <v-progress-circular v-if="loading" indeterminate color="primary" 
-        style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000;"></v-progress-circular>
+        style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2401;"></v-progress-circular>
 
     <v-alert v-if="error" type="error" style="position: fixed; top: 20px; right: 20px; z-index: 2401;">{{ error }}</v-alert>
 
     <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false"
         style="position: fixed; top: 20px; right: 20px; z-index: 2401;">Пользователь удален!</v-alert>
 
-    <v-table :height="'500px'" :density="'comfortable'" fixed-header>
-      <thead>
-        <tr>
-          <th>Имя</th>
-          <th>Логин</th>
-          <th>Почта</th>
-          <th>id чата</th>
-          <th>Дата создания</th>
-          <th>Дата реадктирования</th>
-          <th>Роли</th>
-          <th>Действие</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(item) in users" :key="item.id">
-          <td>
-            <router-link :to="{ name: 'EditUser', params: { id: item.id } }" style="color:black">{{ item.name
-            }}</router-link>
-          </td>
-          <td>{{ item.login }}</td>
-          <td>{{ item.email }}</td>
-          <td>{{ item.chatId }}</td>
-          <td>{{ item.createdAt }}</td>
-          <td>{{ item.lastRevision }}</td>
-          <td>{{ item.selectedRoles }}</td>
-          <td>
-            <v-tooltip text="Редактировать пользователя">
-              <template v-slot:activator="{ props }">
-                <v-btn size="30" v-bind="props" @click="editUser(item.id)">
-                  <v-icon size="25">mdi-pencil</v-icon>
-                </v-btn>
-              </template>
-            </v-tooltip>
+    <v-data-table-server
+      v-model:items-per-page="itemsPerPage"
+      v-model:page="currentPage"
+      :headers="headers"
+      :items="users"
+      :items-length="totalItems"
+      :loading="loading"
+      :sort-by="[sortBy]"
+      :sort-desc="sortBy.order === 'desc'"
+      item-value="name"
+      @update:options="loadItems"
+    >
+      <template v-for="header in headers" :key="header.value" v-slot:[`column:${header.value}`]="{ column }">
+        <span> 
+          {{ column.label }} 
+        </span>
+      </template>
 
-            <v-tooltip text="Удалить пользователя">
-              <template v-slot:activator="{ props }">
-                <v-btn size="30" v-bind="props" @click="confirmDelete(item.id)">
-                  <v-icon size="25" color="red">mdi-close-circle</v-icon>
-                </v-btn>
-              </template>
-            </v-tooltip>
-          </td>
-        </tr>
-      </tbody>
-    </v-table>
+      <template v-slot:[`item.name`]="{ item }">
+        <router-link :to="{ name: 'EditUser', params: { id: item.id } }" style="color: black; text-decoration: underline;">
+          {{ item.name }}
+        </router-link>
+      </template>
+    
+      <template v-slot:[`item.email`]="{ item }">
+        <a :href="'mailto:' + item.email" style="color: black; text-decoration: underline;">
+          {{ item.email }}
+        </a>
+      </template>
+      
+      <template v-slot:[`item.action`]="{ item }">
+        <v-tooltip text="Редактировать пользователя">
+          <template v-slot:activator="{ props }">
+            <v-btn size="30" v-bind="props" @click="editUser(item.id)">
+              <v-icon size="25">mdi-pencil</v-icon>
+            </v-btn>
+          </template>
+        </v-tooltip>
+        <v-tooltip text="Удалить пользователя">
+          <template v-slot:activator="{ props }">
+            <v-btn size="30" v-bind="props" @click="confirmDelete(item.id)">
+              <v-icon size="25" color="red">mdi-delete-outline</v-icon>
+            </v-btn>
+          </template>
+        </v-tooltip>
+      </template>
+    </v-data-table-server>
 
     <v-dialog v-model="dialog" max-width="400px">
       <v-card>
@@ -113,7 +108,7 @@
 </template>
 
 <script>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, nextTick } from 'vue';
 import axios from 'axios';
 import router from '../../router';
 import { useRoute } from 'vue-router';
@@ -127,50 +122,81 @@ export default {
     const dialog = ref(false);
     const userIdToDelete = ref(null);
     const successMessage = ref(false);
-
     const selectedRoles = ref([]);
     const roles = ref([]);
-
     const searchQuery = ref('');
+    const route = useRoute();
+    const sortBy = ref({ key: route.query.sort || 'lastRevision', order: route.query.order  || 'desc' });
+    const filterRole = ref(route.query.filter || '[]'); 
+    const ROLE_NOT_FOUND = "Роли нет";
 
-    const route = useRoute()
-    const sortBy = ref(route.query.sort || 'nameAsc'); 
-    const filterRole = ref(route.query.filter || ' '); 
-    
+    const totalItems = ref(0);
+    const itemsPerPage = ref(10);
+    const currentPage = ref(1);
 
-    const sortOptions = [
-      { text: "По возрастанию имени", value: "nameAsc" },
-      { text: "По убыванию имени", value: "nameDesc" },
-      { text: "По возрастанию email", value: "emailAsc" },
-      { text: "По убыванию email", value: "emailDesc" },
-      { text: "По возрастанию даты создания", value: "createdAtAsc" },
-      { text: "По убыванию даты создания", value: "createdAtDesc" },
-      { text: "По возрастанию даты редактирования", value: "lastRevisionAsc" },
-      { text: "По убыванию даты редактирования", value: "lastRevisionDesc" }
-    ];
 
-    const applySort = async () => {
-      router.push({ query: { ...route.query, sort: sortBy.value } });
-      await fetchUsers();
+    const headers = ref([
+      { title: 'Имя', align: 'start', key: 'name' },
+      { title: 'Логин', key: 'login' },
+      { title: 'Почта', key: 'email' },
+      { title: 'id чата', key: 'chatId' },
+      { title: 'Дата создания', key: 'createdAt' },
+      { title: 'Дата редактирования', key: 'lastRevision' },
+      { title: 'Роли', key: 'selectedRoles', sortable: false },
+      { title: 'Действие', key: 'action', sortable: false },
+    ]);
+
+    const loadItems = async (options) => {
+      console.log(options);
+      const { sortBy, itemsPerPage: perPage, page } = options;
+
+      itemsPerPage.value = perPage || 10; 
+      currentPage.value = page || 1;
+
+      const sortKey = sortBy[0]?.key || 'lastRevision'; 
+      const sortOrder = sortBy[0]?.order || 'desc';
+
+      console.log(sortKey);
+      console.log(sortOrder);
+
+      router.replace({
+        name: route.name,
+        query: {
+          ...route.query,
+          sort: sortKey,
+          order: sortOrder
+        }
+      });
     };
 
     const filterRoles = async () => {
-      const selectedRoleTexts = selectedRoles.value.length > 0 ? selectedRoles.value.map(role => role.text).join(',') : '';
-      router.push({ query: { ...route.query, filter: selectedRoleTexts } });
-      await fetchUsers();
+      const selectedRoleIds = selectedRoles.value.length > 0 
+        ? selectedRoles.value.map(role => role.value) 
+        : "";
+      
+      console.log("selectedRoleIds" + selectedRoleIds);
+
+      router.replace({
+        name: route.name,
+        query: {
+          ...route.query,
+          filter: selectedRoleIds.length > 0 ? selectedRoleIds : ''
+        }
+      });
     };
 
     const searchUsers = async () => {
       const searchParam = searchQuery.value.trim();
 
-      router.push({
-        query: {
-          ...route.query,
-          search: searchParam
-        }
-      });
-
-      await fetchUsers();
+      if (searchParam) {
+        router.replace({
+          name: route.name,
+          query: {
+            ...route.query,
+            search: searchParam
+          }
+        });
+      }
     };
 
     const formatDate = (date) => {
@@ -188,35 +214,46 @@ export default {
 
     const fetchRoles = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/RoleWithFunctions/List`);
+        const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/List`);
         roles.value = response.data.map(role => ({
           text: role.name,
           value: role.id
         }));
       } catch (error) {
-        console.error("Ошибка при загрузке ролей:", error);
+        error.value = 'Ошибка при загрузке ролей';
       }
     };
 
-    const fetchUsers = async () => {
+    const fetchUsers = async ({ page = 1, itemsPerPage = 10 } = {}) => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles/List`, {
+        currentPage.value = page;
+
+        const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/User/List`, {
           params: {
-            sort: sortBy.value, 
-            filter: selectedRoles.value.length > 0 ? selectedRoles.value.map(role => role.text).join(',') : '',
-            search: searchQuery.value.trim()
-          }
+            sort: route.query.sort,    
+            order: route.query.order,  
+            page,                      
+            itemsPerPage,  
+            filter: route.query.filter,           
+            search: searchQuery.value.trim() 
+          },
+          paramsSerializer: { indexes: null }
         });
+
         users.value = response.data.map(user => {
           user.createdAt = formatDate(user.createdAt);
           user.lastRevision = formatDate(user.lastRevision);
-          user.selectedRoles = user.roles.length !== 0 ? user.roles.join(', ') : "Роли нет";
+          user.selectedRoles = user.roles.length !== 0 ? user.roles.join(', ') : ROLE_NOT_FOUND;
           return user;
         });
         loading.value = false;
+        totalItems.value = response.data.length; 
       } catch (err) {
         error.value = 'Ошибка загрузки данных';
         loading.value = false;
+        setTimeout(() => {
+          error.value = null;
+        }, 2000);
       }
     };
 
@@ -227,7 +264,7 @@ export default {
     const deleteUser = async () => {
       if (!userIdToDelete.value) return;
       try {
-        await axios.delete(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles/${userIdToDelete.value}`);
+        await axios.delete(`${import.meta.env.VITE_APP_BASE_URL}/api/User/${userIdToDelete.value}`);
         loading.value = true;
         dialog.value = false;
         successMessage.value = true;
@@ -238,6 +275,9 @@ export default {
         await fetchUsers();
       } catch (err) {
         error.value = 'Ошибка при удалении пользователя';
+        setTimeout(() => {
+          error.value = null;
+        }, 2000);
       }
     };
 
@@ -246,32 +286,79 @@ export default {
       dialog.value = true;
     };
 
-    onMounted(() => {
-      if (route.query.search) {
-        searchQuery.value = route.query.search;
-      }
-      if (route.query.sort) applySort();
+    const restoreSelectedRoles = () => {
       if (route.query.filter) {
-        selectedRoles.value = route.query.filter.split(',').map(roleText =>
-          roles.value.find(role => role.text === roleText) || { text: roleText, value: null }
-        );
+        const roleIds = Array.isArray(route.query.filter)
+          ? route.query.filter.map(id => Number(id))
+          : [Number(route.query.filter)];
+        
+        selectedRoles.value = roleIds.map(roleId => {
+          const role = roles.value.find(role => role.value === roleId);
+          return role || { text: `Роль с ID ${roleId} не найдена`, value: null };
+        }).filter(role => role.value !== null);
       }
-      fetchUsers();
-      fetchRoles();
+    };
+
+    onMounted(() => {
+      if (route.query.search) searchQuery.value = route.query.search;
+
+      if (route.query.sort && route.query.order) {
+        sortBy.value = {
+          key: route.query.sort,
+          order: route.query.order,
+        };
+      }
+
+      fetchRoles().then(() => {
+        restoreSelectedRoles();
+        fetchUsers();
+      });
     });
 
     watch(
-      () => route.query.search,
-      async (newSearch) => {
-        if (newSearch) {
-          searchQuery.value = newSearch;
-        } else {
-          searchQuery.value = '';
+      () => ({
+        search: route.query.search,
+        sort: route.query.sort,
+        order: route.query.order,
+        filter: route.query.filter
+      }),
+      (newQuery, oldQuery) => {
+        if (
+          newQuery.search !== oldQuery.search ||
+          newQuery.sort !== oldQuery.sort ||
+          newQuery.order !== oldQuery.order ||
+          newQuery.filter !== oldQuery.filter
+        ){
+          if (newQuery.sort && newQuery.order) {
+            sortBy.value = {
+              key: newQuery.sort,
+              order: newQuery.order,
+            };
+          }
+
+          if (newQuery.search) {
+            searchQuery.value = newQuery.search;
+          }
+          
+          let roleIds = [];
+          if (newQuery.filter) {
+            roleIds = Array.isArray(newQuery.filter)
+              ? newQuery.filter.map(id => parseInt(id, 10))
+              : [parseInt(newQuery.filter, 10)];
+          }
+
+          selectedRoles.value = roleIds.map(roleId => roles.value.find(
+            role => role.value === roleId)).filter(role => role !== undefined);
+
+          fetchUsers();
         }
-        fetchUsers();
       },
-      { immediate: true }
+      { immediate: false }
     );
+
+    watch(roles, () => {
+      restoreSelectedRoles();
+    });
 
     return {
       users,
@@ -286,14 +373,14 @@ export default {
       deleteUser,
       confirmDelete,
       sortBy,
-      sortOptions,
-      applySort,
-      roles,
       selectedRoles,
       filterRoles,
-      filterRole,
       searchQuery,
-      searchUsers
+      filterRole,
+      roles,
+      headers,
+      loadItems,
+      searchUsers,
     };
   }
 }

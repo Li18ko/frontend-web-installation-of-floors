@@ -67,6 +67,8 @@
         Пользователь создан!
       </v-alert>
 
+      <v-alert v-if="error" type="error" style="position: fixed; top: 20px; right: 20px; z-index: 2401;">{{ error }}</v-alert>
+
       <div style="display: flex; align-items: center;">
         <v-btn type="submit" tabindex="8" color="primary" style="margin-right: 20px;">Сохранить</v-btn>
         <v-btn color="grey" text to="/users" tabindex="9">Назад</v-btn>
@@ -89,13 +91,14 @@ export default {
     const firstCell = ref(null);
     const selectedRoles = ref([]);
     const roles = ref([]);
+    const error = ref(null);
 
     const schema = yup.object({
       name: yup.string().required('Имя обязательно'),
       login: yup.string().required('Логин обязателен').test('unique-login', 'Логин уже существует', async (value) => {
         console.log(value);
         try {
-          const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles/IsLoginTakenAsync/${value}`);
+          const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/User/IsLoginTaken/${value}/0`);
           return !response.data;
         } catch (error) {
           console.error('Ошибка при проверке логина:', error);
@@ -106,7 +109,7 @@ export default {
         .test('unique-email', 'Почта уже существует', async (value) => {
           console.log(value);
           try {
-            const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles/IsEmailTakenAsync/${value}`);
+            const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/User/IsEmailTaken/${value}/0`);
             return !response.data;
           } catch (error) {
             console.error('Ошибка при проверке почты:', error);
@@ -134,7 +137,7 @@ export default {
 
     const addUser = handleSubmit(async (values) => {
       try {
-        const response = await axios.post(`${import.meta.env.VITE_APP_BASE_URL}/api/UserWithRoles`, {
+        const response = await axios.post(`${import.meta.env.VITE_APP_BASE_URL}/api/User`, {
           name: values.name,
           login: values.login,
           email: values.email,
@@ -152,14 +155,27 @@ export default {
             router.push({ name: 'Users' });
           }, 2000);
         }
-      } catch (error) {
-        console.error('Ошибка при сохранении изменений', error);
+      } catch (err) {
+        if (err.response && err.response.data.errors) {
+
+          if (err.response.data.errors.ChatId) {
+            error.value = err.response.data.errors.ChatId[0];
+          } else {
+            error.value = "Ошибка при обновлении пользователя.";
+          }
+        } else {
+          error.value = "Неизвестная ошибка сервера.";
+        }
+
+        setTimeout(() => {
+          error.value = null;
+        }, 3000);
       }
     });
 
     const fetchRoles = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/RoleWithFunctions/List`);
+        const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/List`);
         roles.value = response.data.map(role => ({
           text: role.name,
           value: role.id
@@ -193,7 +209,8 @@ export default {
       userId,
       successMessage,
       firstCell,
-      roles
+      roles,
+      error
     };
   },
 };
