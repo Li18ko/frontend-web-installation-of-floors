@@ -44,7 +44,7 @@
 
     <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false"
         style="position: fixed; top: 20px; right: 20px; z-index: 2401;">Пользователь удален!</v-alert>
-
+      
     <v-data-table-server
       v-model:items-per-page="itemsPerPage"
       v-model:page="currentPage"
@@ -131,7 +131,7 @@ export default {
     const ROLE_NOT_FOUND = "Роли нет";
 
     const totalItems = ref(0);
-    const itemsPerPage = ref(10);
+    const itemsPerPage = ref(10)
     const currentPage = ref(1);
 
 
@@ -150,23 +150,26 @@ export default {
       console.log(options);
       const { sortBy, itemsPerPage: perPage, page } = options;
 
+      console.log(perPage, page );
+
       itemsPerPage.value = perPage || 10; 
       currentPage.value = page || 1;
 
       const sortKey = sortBy[0]?.key || 'lastRevision'; 
       const sortOrder = sortBy[0]?.order || 'desc';
 
-      console.log(sortKey);
-      console.log(sortOrder);
-
       router.replace({
         name: route.name,
         query: {
           ...route.query,
           sort: sortKey,
-          order: sortOrder
+          order: sortOrder,
+          itemsPerPage: itemsPerPage.value,
+          currentPage: currentPage.value
         }
       });
+
+      console.log("loadItems end");
     };
 
     const filterRoles = async () => {
@@ -224,30 +227,29 @@ export default {
       }
     };
 
-    const fetchUsers = async ({ page = 1, itemsPerPage = 10 } = {}) => {
+    const fetchUsers = async () => {
       try {
-        currentPage.value = page;
-
         const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/User/List`, {
           params: {
             sort: route.query.sort,    
             order: route.query.order,  
-            page,                      
-            itemsPerPage,  
-            filter: route.query.filter,           
+            skip: (route.query.currentPage - 1) * route.query.itemsPerPage,                      
+            take: route.query.itemsPerPage,  
+            filter: route.query.filter || null,           
             search: searchQuery.value.trim() 
           },
           paramsSerializer: { indexes: null }
         });
 
-        users.value = response.data.map(user => {
+        users.value = response.data.items.map(user => {
           user.createdAt = formatDate(user.createdAt);
           user.lastRevision = formatDate(user.lastRevision);
           user.selectedRoles = user.roles.length !== 0 ? user.roles.join(', ') : ROLE_NOT_FOUND;
           return user;
         });
         loading.value = false;
-        totalItems.value = response.data.length; 
+        
+        totalItems.value = response.data.count; 
       } catch (err) {
         error.value = 'Ошибка загрузки данных';
         loading.value = false;
@@ -309,6 +311,16 @@ export default {
         };
       }
 
+      if (route.query.currentPage){
+        currentPage.value = route.query.currentPage;
+        console.log("currentPage.value", currentPage.value);
+      } 
+      
+      if (route.query.itemsPerPage) {
+        itemsPerPage.value = route.query.itemsPerPage;
+        console.log("itemsPerPage.value", itemsPerPage.value);
+      }
+
       fetchRoles().then(() => {
         restoreSelectedRoles();
         fetchUsers();
@@ -320,14 +332,18 @@ export default {
         search: route.query.search,
         sort: route.query.sort,
         order: route.query.order,
-        filter: route.query.filter
+        filter: route.query.filter,
+        currentPage: route.query.currentPage,
+        itemsPerPage: route.query.itemsPerPage
       }),
       (newQuery, oldQuery) => {
         if (
           newQuery.search !== oldQuery.search ||
           newQuery.sort !== oldQuery.sort ||
           newQuery.order !== oldQuery.order ||
-          newQuery.filter !== oldQuery.filter
+          newQuery.filter !== oldQuery.filter ||
+          newQuery.itemsPerPage !== oldQuery.itemsPerPage ||
+          newQuery.currentPage !== oldQuery.currentPage
         ){
           if (newQuery.sort && newQuery.order) {
             sortBy.value = {
@@ -336,9 +352,13 @@ export default {
             };
           }
 
-          if (newQuery.search) {
-            searchQuery.value = newQuery.search;
-          }
+          if (newQuery.search) searchQuery.value = newQuery.search;
+
+          console.log("newQuery.currentPage", currentPage.value);
+          if (newQuery.currentPage) currentPage.value = parseInt(newQuery.currentPage, 10);
+
+          console.log("newQuery.itemsPerPage", itemsPerPage.value);
+          if (newQuery.itemsPerPage) itemsPerPage.value = parseInt(newQuery.itemsPerPage, 10);
           
           let roleIds = [];
           if (newQuery.filter) {
@@ -381,6 +401,9 @@ export default {
       headers,
       loadItems,
       searchUsers,
+      itemsPerPage,
+      currentPage,
+      totalItems
     };
   }
 }
