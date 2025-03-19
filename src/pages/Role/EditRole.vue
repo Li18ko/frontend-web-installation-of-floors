@@ -4,33 +4,47 @@
             <h1>Редактировать роль: {{ role.name || 'Загрузка...' }} </h1>
         </div>
         <br>
+        <v-tabs
+        v-model="activeTab"
+        align-tabs="center"
+        color="deep-purple-accent-4"
+        >
+            <v-tab :value="0">Роль</v-tab>
+            <v-tab :value="1">Функции</v-tab>   
+        </v-tabs>
+        <br>
+
         <v-form @submit.prevent="editRole">
-            <v-row>
-                <v-col cols="12" sm="6">
-                    <v-text-field v-model="name" ref="firstCell" tabindex="1" label="Название роли"
-                        :error-messages="nameError ? [nameError] : []"></v-text-field>
-                </v-col>
-            </v-row>
+            <v-tabs-window v-model="activeTab">
+                <v-tabs-window-item :key="0" :value="0">
+                    <v-row>
+                        <v-col cols="12" sm="6">
+                            <v-text-field v-model="name" ref="firstCell" tabindex="1" label="Название роли"
+                                :error-messages="nameError ? [nameError] : []"></v-text-field>
+                        </v-col>
+                        <v-col cols="12" sm="6">
+                            <v-text-field v-model="description" tabindex="2" label="Описание роли"
+                            :error-messages="descriptionError ? [descriptionError] : []"></v-text-field>
+                        </v-col>
+                    </v-row>
 
-            <v-row>
-                <v-col cols="12" sm="6">
-                    <v-text-field v-model="description" tabindex="2" label="Описание роли"
-                    :error-messages="descriptionError ? [descriptionError] : []"></v-text-field>
-                </v-col>
-            </v-row>
-
-            <v-checkbox v-model="isActive" label="Активность"></v-checkbox>
-
-            <v-combobox v-model="selectedFunctions" :items="functions" item-title="text" item-value="value"
-                label="Выберите функции" multiple chips tabindex="3">
-
-                <template v-slot:selection="{ item }">
-                    <v-chip>
-                        {{ item.text }}
-                    </v-chip>
-                </template>
-            </v-combobox>
-
+                    <v-checkbox v-model="isActive" label="Активность"></v-checkbox>
+                </v-tabs-window-item>
+                
+                <v-tabs-window-item :key="1" :value="1">
+                    <v-card-text>
+                        <v-treeview
+                            v-model:selected="selectedFunctions"
+                            :items="treeData"
+                            select-strategy="leaf"
+                            item-props
+                            open-all
+                            selectable
+                        />
+                    </v-card-text>
+                </v-tabs-window-item>
+            </v-tabs-window>
+            
             <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false"
                 style="position: fixed; top: 20px; right: 20px; z-index: 2401;">
                 Роль изменена!
@@ -66,6 +80,9 @@ export default {
             active: false,
             functions: [],
         });
+        const activeTab = ref(0);
+        const treeData = ref([]);
+        const selectedFunctions = ref([]);
 
         const successMessage = ref(false);
 
@@ -80,7 +97,6 @@ export default {
 
         const { value: name, errorMessage: nameError } = useField('name');
         const { value: description, errorMessage: descriptionError } = useField('description');
-        const { value: selectedFunctions } = useField('functions');
         const isActive = ref(false);
 
         const fetchData = async () => {
@@ -90,23 +106,66 @@ export default {
                     axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/${roleId}`)
                 ]);
 
-                functions.value = functionsResponse.data.map(func => ({
-                    text: func.name,
-                    value: func.id
-                }));
+                const groupedFunctions = {
+                    User: [],
+                    Task: [],
+                    Role: []
+                };
+
+                functionsResponse.data.forEach(func => {
+                    if (func.code.includes("User")) {
+                        groupedFunctions.User.push({
+                            title: func.name,
+                            value: func.id,
+                            selected: roleResponse.data.functions.some(roleFunc => roleFunc.id === func.id)
+                        });
+                    } else if (func.code.includes("Task")) {
+                        groupedFunctions.Task.push({
+                            title: func.name,
+                            value: func.id,
+                            selected: roleResponse.data.functions.some(roleFunc => roleFunc.id === func.id)
+                        });
+                    } else if (func.code.includes("Role")) {
+                        groupedFunctions.Role.push({
+                            title: func.name,
+                            value: func.id,
+                            selected: roleResponse.data.functions.some(roleFunc => roleFunc.id === func.id)
+                        });
+                    }
+                });
+
+                console.log("groupedFunctions", groupedFunctions);
+                treeData.value = [
+                    {
+                        title: "Пользователи:",
+                        value: "User",
+                        children: groupedFunctions.User
+                    },
+                    {
+                        title: "Задачи:",
+                        value: "Task",
+                        children: groupedFunctions.Task
+                    },
+                    {
+                        title: "Роли:",
+                        value: "Role",
+                        children: groupedFunctions.Role
+                    }
+                ];
+
+                console.log("treeData.value", treeData.value);
 
                 role.value = roleResponse.data;
                 name.value = roleResponse.data.name;
                 description.value = roleResponse.data.description;
                 isActive.value = roleResponse.data.active;
-                selectedFunctions.value = roleResponse.data.functions ? roleResponse.data.functions.map(func => ({
-                    text: func.name,
-                    value: func.id
-                })) : [];
+
+                selectedFunctions.value = roleResponse.data.functions.map(func => func.id);
 
                 if (firstCell.value) {
                     firstCell.value.focus();
                 }
+                
             } catch (error) {
                 console.error("Ошибка при загрузке данных", error);
             }
@@ -114,13 +173,12 @@ export default {
 
         const editRole = handleSubmit(async () => {
             try {
-                const functionIds = selectedFunctions.value.map(functionItem => functionItem.value);
                 await axios.put(`${import.meta.env.VITE_APP_BASE_URL}/api/Role`, {
                     id: role.value.id,
                     name: name.value,
                     description: description.value,
                     active: isActive.value,
-                    functionIds: functionIds
+                    functionIds: selectedFunctions.value
                 });
 
                 successMessage.value = true;
@@ -134,9 +192,10 @@ export default {
             }
         });
 
-        onMounted(() => {
-            fetchData();
+        onMounted(async () => {
+            await fetchData();
         });
+
 
         return {
             name,
@@ -150,6 +209,8 @@ export default {
             editRole,
             firstCell,
             functions,
+            activeTab,
+            treeData
         };
     }
 }

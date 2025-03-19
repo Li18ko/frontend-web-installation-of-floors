@@ -9,6 +9,7 @@ import * as components from "vuetify/components";
 import * as directives from "vuetify/directives";
 
 import { VCalendar } from "vuetify/labs/VCalendar";
+import { VTreeview } from 'vuetify/labs/VTreeview'
 import { VList, VListItem, VListItemTitle, VListGroup} from 'vuetify/components';
 
 
@@ -20,7 +21,8 @@ const vuetify = createVuetify({
         VList,
         VListItem,
         VListItemTitle,
-        VListGroup
+        VListGroup,
+        VTreeview
     },
     directives,
 });
