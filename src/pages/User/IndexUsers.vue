@@ -218,7 +218,7 @@ export default {
     const fetchRoles = async () => {
       try {
         const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/List`);
-        roles.value = response.data.map(role => ({
+        roles.value = response.data.items.map(role => ({
           text: role.name,
           value: role.id
         }));
@@ -312,12 +312,12 @@ export default {
       }
 
       if (route.query.currentPage){
-        currentPage.value = route.query.currentPage;
+        currentPage.value = parseInt(route.query.currentPage, 10);
         console.log("currentPage.value", currentPage.value);
       } 
       
       if (route.query.itemsPerPage) {
-        itemsPerPage.value = route.query.itemsPerPage;
+        itemsPerPage.value = parseInt(route.query.itemsPerPage, 10);
         console.log("itemsPerPage.value", itemsPerPage.value);
       }
 

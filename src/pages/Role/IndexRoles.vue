@@ -16,61 +16,63 @@
           style="position: fixed; top: 20px; right: 20px; z-index: 2401;">Роль удалена!</v-alert>
 
       <v-col cols="12" sm="4">
-          <v-combobox
-            v-model="statusFilter"
-            :items="statusOptions"
-            item-title="text"
-            item-value="value"
-            label="Выберите роли"
-            multiple
-            chips
-            @update:modelValue="filterRoles"
-          >
-            <template v-slot:selection="{ item }">
-              <v-chip>
-                {{ item.text }}
-              </v-chip>
+        <v-combobox
+          v-model="statusFilter"
+          :items="statusOptions"
+          item-title="text"
+          item-value="value"
+          label="Выберите роли"
+          multiple
+          chips
+          @update:modelValue="filterRoles"
+        >
+          <template v-slot:selection="{ item }">
+            <v-chip>
+              {{ item.text }}
+            </v-chip>
+          </template>
+        </v-combobox>
+      </v-col>
+
+      <v-data-table-server
+        v-model:items-per-page="itemsPerPage"
+        v-model:page="currentPage"
+        :headers="headers"
+        :items="roles"
+        :items-length="totalItems"
+        :loading="loading"
+        item-value="name"
+        @update:options="loadItems"
+      >
+        <template v-for="header in headers" :key="header.value" v-slot:[`column:${header.value}`]="{ column }">
+          <span> 
+            {{ column.label }} 
+          </span>
+        </template>
+
+        <template v-slot:[`item.name`]="{ item }">
+          <router-link :to="{ name: 'EditUser', params: { id: item.id } }" style="color: black; text-decoration: underline;">
+            {{ item.name }}
+          </router-link>
+        </template>
+        
+        <template v-slot:[`item.action`]="{ item }">
+          <v-tooltip text="Редактировать пользователя">
+            <template v-slot:activator="{ props }">
+              <v-btn size="30" v-bind="props" @click="editRole(item.id)">
+                <v-icon size="25">mdi-pencil</v-icon>
+              </v-btn>
             </template>
-          </v-combobox>
-        </v-col>
-  
-      <v-table :height="'500px'" :density="'comfortable'" fixed-header>
-        <thead>
-          <tr>
-            <th>Роль</th>
-            <th>Описание</th>
-            <th>Функции</th>
-            <th>Действие</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(item) in roles" :key="item.id">
-            <td>
-              <router-link :to="{ name: 'EditRole', params: { id: item.id } }" style="color:black">{{ item.name
-              }}</router-link>
-            </td>
-            <td>{{ item.description }}</td>
-            <td>{{ item.functions.map(f => f.name).join(', ') }}</td>
-            <td>
-              <v-tooltip text="Редактировать роль">
-                <template v-slot:activator="{ props }">
-                  <v-btn size="30" v-bind="props" @click="editRole(item.id)">
-                    <v-icon size="25">mdi-pencil</v-icon>
-                  </v-btn>
-                </template>
-              </v-tooltip>
-  
-              <v-tooltip text="Удалить роль">
-                <template v-slot:activator="{ props }">
-                  <v-btn size="30" v-bind="props" @click="confirmDelete(item.id)">
-                    <v-icon size="25" color="red">mdi-delete-outline</v-icon>
-                  </v-btn>
-                </template>
-              </v-tooltip>
-            </td>
-          </tr>
-        </tbody>
-      </v-table>
+          </v-tooltip>
+          <v-tooltip text="Удалить пользователя">
+            <template v-slot:activator="{ props }">
+              <v-btn size="30" v-bind="props" @click="confirmDelete(item.id)">
+                <v-icon size="25" color="red">mdi-delete-outline</v-icon>
+              </v-btn>
+            </template>
+          </v-tooltip>
+        </template>
+      </v-data-table-server>
   
       <v-dialog v-model="dialog" max-width="400px">
         <v-card>
@@ -98,6 +100,10 @@ export default {
     const route = useRoute();
     const router = useRouter();
 
+    const totalItems = ref(0);
+    const itemsPerPage = ref(10);
+    const currentPage = ref(1);
+
     const roles = ref([]);
     const loading = ref(true);
     const error = ref(null);
@@ -111,31 +117,71 @@ export default {
       { text: 'Неактивные', value: false }
     ]);
 
+    const headers = ref([
+      { title: 'Роль', align: 'start', key: 'name', sortable: false },
+      { title: 'Описание', key: 'description', sortable: false },
+      { title: 'Действие', key: 'action', sortable: false },
+    ]);
+
+    const loadItems = async (options) => {
+      console.log(options);
+      const { itemsPerPage: perPage, page } = options;
+
+      console.log(perPage, page );
+
+      itemsPerPage.value = perPage || 10; 
+      currentPage.value = page || 1;
+
+      router.replace({
+        name: route.name,
+        query: {
+          ...route.query,
+          itemsPerPage: itemsPerPage.value,
+          currentPage: currentPage.value
+        }
+      });
+
+      console.log("loadItems end");
+    };
+
     const filterRoles = async () => {
       const statusParam = statusFilter.value.length ? statusFilter.value.map(item => item.value)  : null;
-        console.log('Отправка query-параметров:', statusParam);
+      console.log('Отправка query-параметров:', statusParam);
 
-        router.push({
-          name: route.name,
-          query: {...route.query, status: statusParam}
-        });
+      router.replace({
+        name: route.name,
+        query: {
+          ...route.query,
+          status: statusParam
+        }
+      });
 
     };
 
     const fetchRoles = async () => {
       try {
+        console.log("run fetchRoles");
+        console.log(route.query.currentPage);
+        console.log(route.query.itemsPerPage);
         const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/List`,{
-            params: {
-            status: statusFilter.value.length ? statusFilter.value: undefined
-          }
+          params: {
+            status: route.query.status || null,  
+            skip: (route.query.currentPage - 1) * route.query.itemsPerPage,                      
+            take: route.query.itemsPerPage
+          }, paramsSerializer: { indexes: null }
         });
-        roles.value = response.data.map(role => ({
-            name: role.name,
-            id: role.id,
-            description: role.description,
-            functions: role.functions
-          }));
+
+        console.log("СЕЙЧАС1", response.data);
+
+        roles.value = response.data.items.map(role => ({
+          name: role.name,
+          id: role.id,
+          description: role.description,
+        }));
+
         loading.value = false;
+        totalItems.value = response.data.count; 
+        console.log("СЕЙЧАС3", totalItems.value);
       } catch (err) {
           error.value = 'Ошибка загрузки данных';
           loading.value = false;
@@ -184,23 +230,55 @@ export default {
     };
 
     onMounted(() => {
-      const statusFromQuery = route.query.status;
-      console.log('Статус при монтировании:', statusFromQuery);
-      statusFilter.value = Array.isArray(statusFromQuery) 
-      ? statusFromQuery.map(s => statusOptions.value.find(opt => String(opt.value) === s)).filter(Boolean)
-      : [statusOptions.value.find(opt => String(opt.value) === statusFromQuery)].filter(Boolean);
+      if (route.query.status){
+        statusFilter.value = Array.isArray(statusFromQuery) 
+          ? statusFromQuery.map(s => statusOptions.value.find(opt => String(opt.value) === s)).filter(Boolean)
+          : [statusOptions.value.find(opt => String(opt.value) === statusFromQuery)].filter(Boolean);
 
-      fetchRoles();
+        console.log("statusFilter.value", statusFilter.value );
+      } 
+    
+      if (route.query.currentPage){
+        currentPage.value = parseInt(route.query.currentPage, 10);
+        console.log("currentPage.value", currentPage.value);
+      } 
+      
+      if (route.query.itemsPerPage) {
+        itemsPerPage.value = parseInt(route.query.itemsPerPage, 10);
+        console.log("itemsPerPage.value", itemsPerPage.value);
+      }
+
+      setTimeout(() => {
+        fetchRoles();
+        }, 500);
     });
 
     watch(
-      () => route.query.status,
-      (newStatus) => {
-        const statusArray = Array.isArray(newStatus) ? newStatus : [newStatus];
-        statusFilter.value = statusArray.map(val => statusOptions.value.find(opt => String(opt.value) === val)).filter(Boolean);
-        fetchRoles();
+      () => ({
+        status: route.query.status,
+        currentPage: route.query.currentPage,
+        itemsPerPage: route.query.itemsPerPage
+      }),
+      (newQuery, oldQuery) => {
+        if (
+          newQuery.status !== oldQuery.status ||
+          newQuery.itemsPerPage !== oldQuery.itemsPerPage ||
+          newQuery.currentPage !== oldQuery.currentPage
+        ){
+          console.log("newQuery.currentPage", currentPage.value);
+          if (newQuery.currentPage) currentPage.value = parseInt(newQuery.currentPage, 10);
+
+          console.log("newQuery.itemsPerPage", itemsPerPage.value);
+          if (newQuery.itemsPerPage) itemsPerPage.value = parseInt(newQuery.itemsPerPage, 10);
+          
+          const statusArray = Array.isArray(newQuery) ? newQuery : [newQuery];
+          statusFilter.value = statusArray.map(val => statusOptions.value.find(opt => 
+            String(opt.value) === val)).filter(Boolean);
+
+          fetchRoles();
+        }
       },
-      { immediate: true }
+      { immediate: false }
     );
 
 
@@ -215,7 +293,12 @@ export default {
       roles,
       statusOptions,
       statusFilter,
-      filterRoles
+      filterRoles,
+      itemsPerPage,
+      currentPage,
+      totalItems,
+      loadItems,
+      headers,
     };
   }
 }
