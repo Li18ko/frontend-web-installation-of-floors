@@ -145,17 +145,24 @@ export default {
     };
 
     const filterRoles = async () => {
-      const statusParam = statusFilter.value.length ? statusFilter.value.map(item => item.value)  : null;
-      console.log('Отправка query-параметров:', statusParam);
+      const statusParam = statusFilter.value.length > 0 
+        ? statusFilter.value.map(item => item.value) 
+        : null;
+      console.log('statusParam ', statusParam);
+
+      const newQuery = {
+        ...route.query,
+        status: statusParam,
+      };
+
+      if (!statusParam) {
+        delete newQuery.status; 
+      }
 
       router.replace({
         name: route.name,
-        query: {
-          ...route.query,
-          status: statusParam
-        }
+        query: newQuery,
       });
-
     };
 
     const fetchRoles = async () => {
@@ -163,6 +170,7 @@ export default {
         console.log("run fetchRoles");
         console.log(route.query.currentPage);
         console.log(route.query.itemsPerPage);
+        console.log(route.query.status);
         const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/List`,{
           params: {
             status: route.query.status || null,  
@@ -230,13 +238,16 @@ export default {
     };
 
     onMounted(() => {
-      if (route.query.status){
-        statusFilter.value = Array.isArray(statusFromQuery) 
-          ? statusFromQuery.map(s => statusOptions.value.find(opt => String(opt.value) === s)).filter(Boolean)
-          : [statusOptions.value.find(opt => String(opt.value) === statusFromQuery)].filter(Boolean);
+      if (route.query.status) {
+        const statusFromQuery = Array.isArray(route.query.status) 
+          ? route.query.status 
+          : [route.query.status]; 
 
-        console.log("statusFilter.value", statusFilter.value );
-      } 
+        statusFilter.value = statusFromQuery.map(s => {
+              const foundItem = statusOptions.value.find(opt => String(opt.value) === String(s));
+              return foundItem ? foundItem : null; 
+            }).filter(Boolean);
+      }
     
       if (route.query.currentPage){
         currentPage.value = parseInt(route.query.currentPage, 10);
@@ -271,9 +282,19 @@ export default {
           console.log("newQuery.itemsPerPage", itemsPerPage.value);
           if (newQuery.itemsPerPage) itemsPerPage.value = parseInt(newQuery.itemsPerPage, 10);
           
-          const statusArray = Array.isArray(newQuery) ? newQuery : [newQuery];
-          statusFilter.value = statusArray.map(val => statusOptions.value.find(opt => 
-            String(opt.value) === val)).filter(Boolean);
+          if (newQuery.status) {
+            const statusFromQuery = Array.isArray(newQuery.status) 
+              ? newQuery.status 
+              : [newQuery.status]; 
+            
+              statusFilter.value = statusFromQuery.map(s => {
+                const foundItem = statusOptions.value.find(opt => String(opt.value) === String(s));
+                return foundItem ? foundItem : null; 
+              }).filter(Boolean);
+
+          } else {
+            statusFilter.value = []; 
+          }
 
           fetchRoles();
         }
