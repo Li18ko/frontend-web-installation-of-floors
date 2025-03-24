@@ -6,7 +6,7 @@
         <br>
         <v-tabs
         v-model="activeTab"
-        align-tabs="center"
+        align-tabs="left"
         color="deep-purple-accent-4"
         >
             <v-tab :value="0">Роль</v-tab>
@@ -106,52 +106,27 @@ export default {
                     axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/${roleId}`)
                 ]);
 
-                const groupedFunctions = {
-                    User: [],
-                    Task: [],
-                    Role: []
-                };
+                const groupedFunctions = {};
 
                 functionsResponse.data.forEach(func => {
-                    if (func.code.includes("User")) {
-                        groupedFunctions.User.push({
-                            title: func.name,
-                            value: func.id,
-                            selected: roleResponse.data.functions.some(roleFunc => roleFunc.id === func.id)
-                        });
-                    } else if (func.code.includes("Task")) {
-                        groupedFunctions.Task.push({
-                            title: func.name,
-                            value: func.id,
-                            selected: roleResponse.data.functions.some(roleFunc => roleFunc.id === func.id)
-                        });
-                    } else if (func.code.includes("Role")) {
-                        groupedFunctions.Role.push({
-                            title: func.name,
-                            value: func.id,
-                            selected: roleResponse.data.functions.some(roleFunc => roleFunc.id === func.id)
-                        });
+                    const module = func.module || "Прочее";
+
+                    if (!groupedFunctions[module]) {
+                        groupedFunctions[module] = [];
                     }
+
+                    groupedFunctions[module].push({
+                        title: func.name,
+                        value: func.id,
+                        selected: roleResponse.data.functions.some(roleFunc => roleFunc.id === func.id)
+                    });
                 });
 
-                console.log("groupedFunctions", groupedFunctions);
-                treeData.value = [
-                    {
-                        title: "Пользователи:",
-                        value: "User",
-                        children: groupedFunctions.User
-                    },
-                    {
-                        title: "Задачи:",
-                        value: "Task",
-                        children: groupedFunctions.Task
-                    },
-                    {
-                        title: "Роли:",
-                        value: "Role",
-                        children: groupedFunctions.Role
-                    }
-                ];
+                treeData.value = Object.keys(groupedFunctions).map(moduleName => ({
+                    title: moduleName,
+                    value: moduleName,
+                    children: groupedFunctions[moduleName]
+                }));
 
                 console.log("treeData.value", treeData.value);
 

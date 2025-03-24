@@ -165,7 +165,7 @@ export default {
 
     const fetchRoles = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/List`);
+        const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/ListWithoutSorting`);
         roles.value = response.data.map(role => ({
           text: role.name,
           value: role.id

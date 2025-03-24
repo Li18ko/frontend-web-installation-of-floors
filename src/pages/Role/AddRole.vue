@@ -6,7 +6,7 @@
       <br>
       <v-tabs
       v-model="activeTab"
-      align-tabs="center"
+      align-tabs="left"
       color="deep-purple-accent-4"
       >
           <v-tab :value="0">Роль</v-tab>
@@ -109,57 +109,37 @@
   
       const fetchFunctions = async () => {
         try {
-          const groupedFunctions = {
-              User: [],
-              Task: [],
-              Role: []
-          };
-          const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/ListFunctions`);
+            const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/ListFunctions`);
 
-          response.data.forEach(func => {
-            if (func.code.includes("User")) {
-                groupedFunctions.User.push({
-                    title: func.name,
-                    value: func.id,
-                    selected: false
-                });
-            } else if (func.code.includes("Task")) {
-                groupedFunctions.Task.push({
-                    title: func.name,
-                    value: func.id,
-                    selected: false
-                });
-            } else if (func.code.includes("Role")) {
-                groupedFunctions.Role.push({
-                    title: func.name,
-                    value: func.id,
-                    selected: false
-                });
-            }
-          });
+            const groupedFunctions = {};
 
-          treeData.value = [
-              {
-                title: "Пользователи:",
-                value: "User",
-                children: groupedFunctions.User
-              },
-              {
-                title: "Задачи:",
-                value: "Task",
-                children: groupedFunctions.Task
-              },
-              {
-                title: "Роли:",
-                value: "Role",
-                children: groupedFunctions.Role
-              }
-          ];
+            response.data.forEach(func => {
+                const module = func.module || "Прочее"; 
+
+                if (!groupedFunctions[module]) {
+                    groupedFunctions[module] = [];
+                }
+
+                groupedFunctions[module].push({
+                    title: func.name,
+                    value: func.id,
+                    selected: false
+                });
+            });
+
+            treeData.value = Object.keys(groupedFunctions).map(moduleName => ({
+                title: moduleName,
+                value: moduleName,
+                children: groupedFunctions[moduleName]
+            }));
+
+            console.log("treeData.value", treeData.value);
 
         } catch (error) {
-          console.error("Ошибка при загрузке функций:", error);
+            console.error("Ошибка при загрузке функций:", error);
         }
       };
+
   
       onMounted(() => {
         firstCell.value.focus();
