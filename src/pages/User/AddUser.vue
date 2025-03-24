@@ -62,15 +62,14 @@
         </v-col>
       </v-row>
 
-      <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false"
-        style="position: fixed; top: 20px; right: 20px; z-index: 2401;">
+      <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false" class="alert">
         Пользователь создан!
       </v-alert>
 
-      <v-alert v-if="error" type="error" style="position: fixed; top: 20px; right: 20px; z-index: 2401;">{{ error }}</v-alert>
+      <v-alert v-if="error" type="error" class="alert">{{ error }}</v-alert>
 
-      <div style="display: flex; align-items: center;">
-        <v-btn type="submit" tabindex="8" color="primary" style="margin-right: 20px;">Сохранить</v-btn>
+      <div class="button-form">
+        <v-btn type="submit" tabindex="8" color="primary" class="margin-right">Сохранить</v-btn>
         <v-btn color="grey" text to="/users" tabindex="9">Назад</v-btn>
       </div>
     </v-form>

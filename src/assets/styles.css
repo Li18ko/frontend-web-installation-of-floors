@@ -1,0 +1,37 @@
+.list-header{
+    display: flex; 
+    align-items: center;
+}
+
+.alert-loading {
+    position: fixed !important;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2401;
+}
+
+.alert{
+    position: fixed !important;
+    top: 20px; 
+    right: 20px; 
+    z-index: 2401;
+}
+
+.link{
+    color: black; 
+    text-decoration: underline;
+}
+
+.button-form{
+    display: flex; 
+    align-items: center;
+}
+
+.margin-bottom{
+    margin-bottom: 20px;
+}
+
+.margin-right{
+    margin-right: 20px;
+}

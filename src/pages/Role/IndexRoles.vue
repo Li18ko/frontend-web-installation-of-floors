@@ -1,19 +1,17 @@
 <template>
     <v-container>
-      <div style="display: flex; align-items: center;">
+      <div class="list-header">
         <h1>Роли</h1>
         <v-spacer></v-spacer>
         <v-btn color="green" text to="/roles/add">Добавить</v-btn>
       </div>
       <br>
       
-      <v-progress-circular v-if="loading" indeterminate color="primary" 
-          style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2401;"></v-progress-circular>
+      <v-progress-circular v-if="loading" indeterminate color="primary" class="alert-loading"></v-progress-circular>
   
-      <v-alert v-if="error" type="error" style="position: fixed; top: 20px; right: 20px; z-index: 2401;">{{ error }}</v-alert>
+      <v-alert v-if="error" type="error" class="alert">{{ error }}</v-alert>
   
-      <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false"
-          style="position: fixed; top: 20px; right: 20px; z-index: 2401;">Роль удалена!</v-alert>
+      <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false" class="alert">Роль удалена!</v-alert>
 
       <v-col cols="12" sm="4">
         <v-combobox
@@ -51,7 +49,7 @@
         </template>
 
         <template v-slot:[`item.name`]="{ item }">
-          <router-link :to="{ name: 'EditUser', params: { id: item.id } }" style="color: black; text-decoration: underline;">
+          <router-link :to="{ name: 'EditUser', params: { id: item.id } }" class="link">
             {{ item.name }}
           </router-link>
         </template>

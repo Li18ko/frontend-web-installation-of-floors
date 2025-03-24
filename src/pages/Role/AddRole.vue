@@ -44,13 +44,12 @@
           </v-tabs-window-item>
         </v-tabs-window>
   
-        <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false"
-          style="position: fixed; top: 20px; right: 20px; z-index: 2401;">
+        <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false" class="alert">
           Роль добавлена!
         </v-alert>
   
-        <div style="display: flex; align-items: center;">
-          <v-btn type="submit" tabindex="4" color="primary" style="margin-right: 20px;">Сохранить</v-btn>
+        <div class="button-form">
+          <v-btn type="submit" tabindex="4" color="primary" class="margin-right">Сохранить</v-btn>
           <v-btn color="grey" text to="/roles" tabindex="5">Назад</v-btn>
         </div>
       </v-form>

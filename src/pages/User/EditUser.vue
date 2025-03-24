@@ -29,7 +29,7 @@
         </v-col>
       </v-row>
 
-      <v-btn color="grey" tabindex="4" @click="togglePasswordField" style="margin-bottom: 20px;">
+      <v-btn color="grey" tabindex="4" @click="togglePasswordField" class="margin-bottom">
         {{ showPasswordField ? "Отмена" : "Изменить Пароль" }}
       </v-btn>
 
@@ -63,15 +63,14 @@
         </template>
       </v-combobox>
 
-      <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false"
-        style="position: fixed; top: 20px; right: 20px; z-index: 2401;">
+      <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false" class="alert">
         Пользователь изменен!
       </v-alert>
 
-      <v-alert v-if="error" type="error" style="position: fixed; top: 20px; right: 20px; z-index: 2401;">{{ error }}</v-alert>
+      <v-alert v-if="error" type="error" class="alert">{{ error }}</v-alert>
 
-      <div style="display: flex; align-items: center;">
-        <v-btn type="submit" tabindex="7" color="primary" style="margin-right: 20px;">Сохранить</v-btn>
+      <div class="button-form">
+        <v-btn type="submit" tabindex="7" color="primary" class="margin-right">Сохранить</v-btn>
         <v-btn color="grey" text to="/users" tabindex="8">Назад</v-btn>
       </div>
     </v-form>

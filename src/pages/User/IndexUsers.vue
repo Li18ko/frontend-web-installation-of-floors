@@ -1,6 +1,6 @@
 <template>
   <v-container>
-    <div style="display: flex; align-items: center;">
+    <div class="list-header">
       <h1>Пользователи</h1>
       <v-spacer></v-spacer>
       <v-btn color="green" text to="/users/add">Добавить</v-btn>
@@ -37,13 +37,11 @@
         </v-col>
       </v-row>
     </v-container>
-    <v-progress-circular v-if="loading" indeterminate color="primary" 
-        style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2401;"></v-progress-circular>
+    <v-progress-circular v-if="loading" indeterminate color="primary" class="alert-loading"></v-progress-circular>
 
-    <v-alert v-if="error" type="error" style="position: fixed; top: 20px; right: 20px; z-index: 2401;">{{ error }}</v-alert>
+    <v-alert v-if="error" type="error" class="alert">{{ error }}</v-alert>
 
-    <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false"
-        style="position: fixed; top: 20px; right: 20px; z-index: 2401;">Пользователь удален!</v-alert>
+    <v-alert v-if="successMessage" type="success" dismissible @input="successMessage = false" class="alert">Пользователь удален!</v-alert>
       
     <v-data-table-server
       v-model:items-per-page="itemsPerPage"
@@ -64,13 +62,13 @@
       </template>
 
       <template v-slot:[`item.name`]="{ item }">
-        <router-link :to="{ name: 'EditUser', params: { id: item.id } }" style="color: black; text-decoration: underline;">
+        <router-link :to="{ name: 'EditUser', params: { id: item.id } }" class="link">
           {{ item.name }}
         </router-link>
       </template>
     
       <template v-slot:[`item.email`]="{ item }">
-        <a :href="'mailto:' + item.email" style="color: black; text-decoration: underline;">
+        <a :href="'mailto:' + item.email" class="link">
           {{ item.email }}
         </a>
       </template>
