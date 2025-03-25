@@ -32,6 +32,15 @@
                 </v-tabs-window-item>
                 
                 <v-tabs-window-item :key="1" :value="1">
+                    <v-col cols="12" sm="4">
+                        <v-select
+                            v-model="selectedSortOrder"
+                            :items="sortOptions"
+                            label="Сортировка функций"
+                            @update:modelValue="filterFunctions"
+                        ></v-select>
+                    </v-col>
+
                     <v-card-text>
                         <v-treeview
                             v-model:selected="selectedFunctions"
@@ -61,14 +70,16 @@
 import { useForm, useField } from 'vee-validate';
 import * as yup from 'yup';
 import axios from 'axios';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import router from '../../router';
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from 'vue-router';
 
 export default {
     name: 'EditRole',
     setup() {
         const route = useRoute();
+        const router = useRouter();
+
         const roleId = route.params.id;
         const firstCell = ref(null);
         const functions = ref([]);
@@ -84,6 +95,12 @@ export default {
         const selectedFunctions = ref([]);
 
         const successMessage = ref(false);
+
+        const selectedSortOrder = ref("asc");
+        const sortOptions = [
+            { title: "По возрастанию приоритета", value: "desc" },
+            { title: "По убыванию приоритета", value: "asc" }
+        ];
 
         const schema = yup.object({
             name: yup.string().required('Название роли обязательно'),
@@ -101,7 +118,9 @@ export default {
         const fetchData = async () => {
             try {
                 const [functionsResponse, roleResponse] = await Promise.all([
-                    axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/ListFunctions`),
+                    axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/ListFunctions`, {
+                        params: { sort: route.query.sort || "asc" }
+                    }),
                     axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/${roleId}`)
                 ]);
 
@@ -145,6 +164,17 @@ export default {
             }
         };
 
+        const filterFunctions = async () => {
+            router.replace({
+            name: route.name,
+            query: {
+                ...route.query,
+                sort: selectedSortOrder.value,
+            },
+            });
+        };
+  
+
         const editRole = handleSubmit(async () => {
             try {
                 await axios.put(`${import.meta.env.VITE_APP_BASE_URL}/api/Role`, {
@@ -167,8 +197,22 @@ export default {
         });
 
         onMounted(async () => {
+            if (route.query.sort) {
+                selectedSortOrder.value = route.query.sort;
+            }
+
             await fetchData();
         });
+
+        watch(
+            () => route.query.sort,
+            (newSort, oldSort) => {
+            if (newSort !== oldSort) {
+                selectedSortOrder.value = newSort;
+                fetchData();
+            }
+            }
+        );
 
 
         return {
@@ -184,7 +228,10 @@ export default {
             firstCell,
             functions,
             activeTab,
-            treeData
+            treeData,
+            selectedSortOrder,
+            sortOptions,
+            filterFunctions,
         };
     }
 }

@@ -177,8 +177,6 @@ export default {
           }, paramsSerializer: { indexes: null }
         });
 
-        console.log("СЕЙЧАС1", response.data);
-
         roles.value = response.data.items.map(role => ({
           name: role.name,
           id: role.id,
@@ -187,7 +185,6 @@ export default {
 
         loading.value = false;
         totalItems.value = response.data.count; 
-        console.log("СЕЙЧАС3", totalItems.value);
       } catch (err) {
           error.value = 'Ошибка загрузки данных';
           loading.value = false;
