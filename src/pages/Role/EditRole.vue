@@ -119,7 +119,7 @@ export default {
             try {
                 const [functionsResponse, roleResponse] = await Promise.all([
                     axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/ListFunctions`, {
-                        params: { sort: route.query.sort || "asc" }
+                        params: { order: route.query.order || "asc" }
                     }),
                     axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/${roleId}`)
                 ]);
@@ -169,7 +169,7 @@ export default {
             name: route.name,
             query: {
                 ...route.query,
-                sort: selectedSortOrder.value,
+                order: selectedSortOrder.value,
             },
             });
         };
@@ -197,15 +197,15 @@ export default {
         });
 
         onMounted(async () => {
-            if (route.query.sort) {
-                selectedSortOrder.value = route.query.sort;
+            if (route.query.order) {
+                selectedSortOrder.value = route.query.order;
             }
 
             await fetchData();
         });
 
         watch(
-            () => route.query.sort,
+            () => route.query.order,
             (newSort, oldSort) => {
             if (newSort !== oldSort) {
                 selectedSortOrder.value = newSort;

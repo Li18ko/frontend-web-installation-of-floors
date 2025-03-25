@@ -110,7 +110,7 @@
           name: route.name,
           query: {
             ...route.query,
-            sort: selectedSortOrder.value,
+            order: selectedSortOrder.value,
           },
         });
       };
@@ -138,7 +138,7 @@
       const fetchFunctions = async () => {
         try {
             const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/ListFunctions`,{
-              params: { sort: route.query.sort || "asc" }
+              params: { order: route.query.order || "asc" }
             });
 
             const groupedFunctions = {};
@@ -172,8 +172,8 @@
 
   
       onMounted(() => {
-        if (route.query.sort) {
-          selectedSortOrder.value = route.query.sort;
+        if (route.query.order) {
+          selectedSortOrder.value = route.query.order;
         }
 
         firstCell.value.focus();
@@ -181,7 +181,7 @@
       });
 
       watch(
-        () => route.query.sort,
+        () => route.query.order,
         (newSort, oldSort) => {
           if (newSort !== oldSort) {
             selectedSortOrder.value = newSort;
