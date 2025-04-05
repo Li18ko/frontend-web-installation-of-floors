@@ -35,3 +35,15 @@
 .margin-right{
     margin-right: 20px;
 }
+
+.auth-form {
+    position: fixed !important;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.error-page{
+    text-align: center; 
+    padding: 50px;
+}

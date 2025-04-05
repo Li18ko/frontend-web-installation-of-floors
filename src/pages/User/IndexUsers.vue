@@ -3,7 +3,7 @@
     <div class="list-header">
       <h1>Пользователи</h1>
       <v-spacer></v-spacer>
-      <v-btn color="green" text to="/users/add">Добавить</v-btn>
+      <v-btn color="green" v-if="permissions.hasPermission('UserAdd')" text to="/users/add">Добавить</v-btn>
     </div>
     <br>
     <v-container>
@@ -74,14 +74,14 @@
       </template>
       
       <template v-slot:[`item.action`]="{ item }">
-        <v-tooltip text="Редактировать пользователя">
+        <v-tooltip v-if="permissions.hasPermission('UserEdit')" text="Редактировать пользователя">
           <template v-slot:activator="{ props }">
             <v-btn size="30" v-bind="props" @click="editUser(item.id)">
               <v-icon size="25">mdi-pencil</v-icon>
             </v-btn>
           </template>
         </v-tooltip>
-        <v-tooltip text="Удалить пользователя">
+        <v-tooltip v-if="permissions.hasPermission('UserDelete')" text="Удалить пользователя">
           <template v-slot:activator="{ props }">
             <v-btn size="30" v-bind="props" @click="confirmDelete(item.id)">
               <v-icon size="25" color="red">mdi-delete-outline</v-icon>
@@ -106,14 +106,16 @@
 </template>
 
 <script>
-import { ref, onMounted, watch, nextTick } from 'vue';
-import axios from 'axios';
+import { ref, onMounted, watch, nextTick, inject } from 'vue';
 import router from '../../router';
 import { useRoute } from 'vue-router';
 
 export default {
   name: 'Users',
   setup() {
+    const permissions = inject('permissions');
+    const api = inject('api');
+
     const users = ref([]);
     const loading = ref(true);
     const error = ref(null);
@@ -125,7 +127,7 @@ export default {
     const searchQuery = ref('');
     const route = useRoute();
     const sortBy = ref({ key: route.query.sort || 'lastRevision', order: route.query.order  || 'desc' });
-    const filterRole = ref(route.query.filter || '[]'); 
+    const filterRole = ref(route.query.role || '[]'); 
     const ROLE_NOT_FOUND = "Роли нет";
 
     const totalItems = ref(0);
@@ -181,7 +183,7 @@ export default {
         name: route.name,
         query: {
           ...route.query,
-          filter: selectedRoleIds.length > 0 ? selectedRoleIds : ''
+          role: selectedRoleIds.length > 0 ? selectedRoleIds : ''
         }
       });
     };
@@ -215,7 +217,7 @@ export default {
 
     const fetchRoles = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/ListWithoutSorting`);
+        const response = await api.get(`/api/Role/ListWithoutSorting`);
         roles.value = response.data.map(role => ({
           text: role.name,
           value: role.id
@@ -227,17 +229,19 @@ export default {
 
     const fetchUsers = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/User/List`, {
+        const response = await api.get(`/api/User/List`, {
           params: {
             sort: route.query.sort,    
             order: route.query.order,  
             skip: (route.query.currentPage - 1) * route.query.itemsPerPage,                      
             take: route.query.itemsPerPage,  
-            filter: route.query.filter || null,           
+            role: route.query.role || null,           
             search: searchQuery.value.trim() 
           },
           paramsSerializer: { indexes: null }
         });
+
+        console.log(response.data);
 
         users.value = response.data.items.map(user => {
           user.createdAt = formatDate(user.createdAt);
@@ -264,7 +268,7 @@ export default {
     const deleteUser = async () => {
       if (!userIdToDelete.value) return;
       try {
-        await axios.delete(`${import.meta.env.VITE_APP_BASE_URL}/api/User/${userIdToDelete.value}`);
+        await api.delete(`/api/User/${userIdToDelete.value}`);
         loading.value = true;
         dialog.value = false;
         successMessage.value = true;
@@ -287,10 +291,10 @@ export default {
     };
 
     const restoreSelectedRoles = () => {
-      if (route.query.filter) {
-        const roleIds = Array.isArray(route.query.filter)
-          ? route.query.filter.map(id => Number(id))
-          : [Number(route.query.filter)];
+      if (route.query.role) {
+        const roleIds = Array.isArray(route.query.role)
+          ? route.query.role.map(id => Number(id))
+          : [Number(route.query.role)];
         
         selectedRoles.value = roleIds.map(roleId => {
           const role = roles.value.find(role => role.value === roleId);
@@ -330,7 +334,7 @@ export default {
         search: route.query.search,
         sort: route.query.sort,
         order: route.query.order,
-        filter: route.query.filter,
+        role: route.query.role,
         currentPage: route.query.currentPage,
         itemsPerPage: route.query.itemsPerPage
       }),
@@ -339,7 +343,7 @@ export default {
           newQuery.search !== oldQuery.search ||
           newQuery.sort !== oldQuery.sort ||
           newQuery.order !== oldQuery.order ||
-          newQuery.filter !== oldQuery.filter ||
+          newQuery.role !== oldQuery.role ||
           newQuery.itemsPerPage !== oldQuery.itemsPerPage ||
           newQuery.currentPage !== oldQuery.currentPage
         ){
@@ -359,10 +363,10 @@ export default {
           if (newQuery.itemsPerPage) itemsPerPage.value = parseInt(newQuery.itemsPerPage, 10);
           
           let roleIds = [];
-          if (newQuery.filter) {
-            roleIds = Array.isArray(newQuery.filter)
-              ? newQuery.filter.map(id => parseInt(id, 10))
-              : [parseInt(newQuery.filter, 10)];
+          if (newQuery.role) {
+            roleIds = Array.isArray(newQuery.role)
+              ? newQuery.role.map(id => parseInt(id, 10))
+              : [parseInt(newQuery.role, 10)];
           }
 
           selectedRoles.value = roleIds.map(roleId => roles.value.find(
@@ -401,7 +405,8 @@ export default {
       searchUsers,
       itemsPerPage,
       currentPage,
-      totalItems
+      totalItems,
+      permissions
     };
   }
 }

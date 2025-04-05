@@ -80,8 +80,7 @@
 <script>
 import { useForm, useField } from 'vee-validate';
 import * as yup from 'yup';
-import axios from 'axios';
-import { ref, toRaw, reactive, onMounted, watch } from 'vue';
+import { ref, toRaw, reactive, onMounted, watch, inject  } from 'vue';
 import router from '../../router';
 import { useRoute } from "vue-router";
 
@@ -94,6 +93,9 @@ export default {
     const firstCell = ref(null);
     const roles = ref([]);
     const error = ref(null);
+
+    const permissions = inject('permissions');
+    const api = inject('api');
 
     const user = reactive({
       id: 0,
@@ -113,7 +115,7 @@ export default {
       login: yup.string().required('Логин обязателен').test('unique-login', 'Логин уже существует', async (value) => {
         console.log(value);
         try {
-          const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/User/IsLoginTaken/${value}/${userId}`);
+          const response = await api.get(`/api/User/IsLoginTaken/${value}/${userId}`);
           console.log(response.data);
           return !response.data;
         } catch (error) {
@@ -125,7 +127,7 @@ export default {
         .test('unique-email', 'Почта уже существует', async (value) => {
           console.log(value);
           try {
-            const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/User/IsEmailTaken/${value}/${userId}`);
+            const response = await api.get(`/api/User/IsEmailTaken/${value}/${userId}`);
             console.log(response.data);
             return !response.data;
           } catch (error) {
@@ -164,7 +166,7 @@ export default {
 
     const fetchRoles = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/ListWithoutSorting`);
+        const response = await api.get(`/api/Role/ListWithoutSorting`);
         roles.value = response.data.map(role => ({
           text: role.name,
           value: role.id
@@ -176,7 +178,7 @@ export default {
 
     const fetchUser = async () => {
       try {
-        const { data } = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/User/${userId}`);
+        const { data } = await api.get(`/api/User/${userId}`);
         Object.assign(user, data);
 
         name.value = data.name;
@@ -194,7 +196,7 @@ export default {
 
     const editUser = handleSubmit(async () => {
       try {
-        await axios.put(`${import.meta.env.VITE_APP_BASE_URL}/api/User`, {
+        await api.put(`/api/User`, {
           id: user.id,
           name: name.value,
           login: login.value,
@@ -270,7 +272,8 @@ export default {
       firstCell,
       togglePasswordField,
       roles,
-      error
+      error,
+      permissions
     };
   }
 }

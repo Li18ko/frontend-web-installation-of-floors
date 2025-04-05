@@ -69,14 +69,16 @@
   <script>
   import { useForm, useField } from 'vee-validate';
   import * as yup from 'yup';
-  import axios from 'axios';
-  import { ref, onMounted, watch } from 'vue';
+  import { ref, onMounted, watch, inject } from 'vue';
   import router from '../../router';
   import { useRoute, useRouter } from 'vue-router';
   
   export default {
     name: 'AddRole',
     setup() {
+      const permissions = inject('permissions');
+      const api = inject('api');
+
       const route = useRoute();
       const router = useRouter();
 
@@ -117,7 +119,7 @@
   
       const addRole = handleSubmit(async () => {
         try {
-          const response = await axios.post(`${import.meta.env.VITE_APP_BASE_URL}/api/Role`, {
+          const response = await api.post(`/api/Role`, {
             name: name.value,
             description: description.value,
             active: isActive.value,
@@ -137,7 +139,7 @@
   
       const fetchFunctions = async () => {
         try {
-            const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/ListFunctions`,{
+            const response = await api.get(`/api/Role/ListFunctions`,{
               params: { order: route.query.order || "asc" }
             });
 
@@ -206,7 +208,8 @@
         selectedSortOrder,
         sortOptions,
         filterFunctions,
-        fetchFunctions
+        fetchFunctions,
+        permissions
       };
     },
   };

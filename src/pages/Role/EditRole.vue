@@ -69,14 +69,16 @@
 <script>
 import { useForm, useField } from 'vee-validate';
 import * as yup from 'yup';
-import axios from 'axios';
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, inject } from 'vue';
 import router from '../../router';
 import { useRoute, useRouter } from 'vue-router';
 
 export default {
     name: 'EditRole',
     setup() {
+        const permissions = inject('permissions');
+        const api = inject('api');
+
         const route = useRoute();
         const router = useRouter();
 
@@ -118,10 +120,10 @@ export default {
         const fetchData = async () => {
             try {
                 const [functionsResponse, roleResponse] = await Promise.all([
-                    axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/ListFunctions`, {
+                    api.get(`/api/Role/ListFunctions`, {
                         params: { order: route.query.order || "asc" }
                     }),
-                    axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/${roleId}`)
+                    api.get(`/api/Role/${roleId}`)
                 ]);
 
                 const groupedFunctions = {};
@@ -177,7 +179,7 @@ export default {
 
         const editRole = handleSubmit(async () => {
             try {
-                await axios.put(`${import.meta.env.VITE_APP_BASE_URL}/api/Role`, {
+                await api.put(`/api/Role`, {
                     id: role.value.id,
                     name: name.value,
                     description: description.value,
@@ -232,6 +234,7 @@ export default {
             selectedSortOrder,
             sortOptions,
             filterFunctions,
+            permissions
         };
     }
 }

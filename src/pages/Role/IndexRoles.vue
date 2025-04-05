@@ -3,7 +3,7 @@
       <div class="list-header">
         <h1>Роли</h1>
         <v-spacer></v-spacer>
-        <v-btn color="green" text to="/roles/add">Добавить</v-btn>
+        <v-btn color="green" v-if="permissions.hasPermission('RoleAdd')" text to="/roles/add">Добавить</v-btn>
       </div>
       <br>
       
@@ -55,14 +55,14 @@
         </template>
         
         <template v-slot:[`item.action`]="{ item }">
-          <v-tooltip text="Редактировать пользователя">
+          <v-tooltip v-if="permissions.hasPermission('RoleEdit')" text="Редактировать роль">
             <template v-slot:activator="{ props }">
               <v-btn size="30" v-bind="props" @click="editRole(item.id)">
                 <v-icon size="25">mdi-pencil</v-icon>
               </v-btn>
             </template>
           </v-tooltip>
-          <v-tooltip text="Удалить пользователя">
+          <v-tooltip v-if="permissions.hasPermission('RoleDelete')" text="Удалить роль">
             <template v-slot:activator="{ props }">
               <v-btn size="30" v-bind="props" @click="confirmDelete(item.id)">
                 <v-icon size="25" color="red">mdi-delete-outline</v-icon>
@@ -87,14 +87,16 @@
   </template>
 
 <script>
-import { ref, onMounted, watch } from 'vue';
-import axios from 'axios';
+import { ref, onMounted, watch, inject } from 'vue';
 import router from '../../router';
 import { useRoute, useRouter } from 'vue-router';
 
 export default {
   name: 'Roles',
   setup() {
+    const permissions = inject('permissions');
+    const api = inject('api');
+
     const route = useRoute();
     const router = useRouter();
 
@@ -169,7 +171,7 @@ export default {
         console.log(route.query.currentPage);
         console.log(route.query.itemsPerPage);
         console.log(route.query.status);
-        const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/List`,{
+        const response = await api.get(`/api/Role/List`,{
           params: {
             status: route.query.status || null,  
             skip: (route.query.currentPage - 1) * route.query.itemsPerPage,                      
@@ -201,7 +203,7 @@ export default {
     const deleteRole = async () => {
       if (!roleIdToDelete.value) return;
       try {
-        await axios.delete(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/${roleIdToDelete.value}`);
+        await api.delete(`/api/Role/${roleIdToDelete.value}`);
         loading.value = true;
         dialog.value = false;
         successMessage.value = true;
@@ -315,6 +317,7 @@ export default {
       totalItems,
       loadItems,
       headers,
+      permissions
     };
   }
 }

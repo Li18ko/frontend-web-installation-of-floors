@@ -80,8 +80,7 @@
 <script>
 import { useForm, useField } from 'vee-validate';
 import * as yup from 'yup';
-import axios from 'axios';
-import { ref, toRaw, onMounted, computed } from 'vue';
+import { ref, toRaw, onMounted, computed, inject } from 'vue';
 import router from '../../router';
 
 export default {
@@ -91,13 +90,16 @@ export default {
     const selectedRoles = ref([]);
     const roles = ref([]);
     const error = ref(null);
+    const permissions = inject('permissions');
+    const api = inject('api');
+
 
     const schema = yup.object({
       name: yup.string().required('Имя обязательно'),
       login: yup.string().required('Логин обязателен').test('unique-login', 'Логин уже существует', async (value) => {
         console.log(value);
         try {
-          const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/User/IsLoginTaken/${value}/0`);
+          const response = await api.get(`/api/User/IsLoginTaken/${value}/0`);
           return !response.data;
         } catch (error) {
           console.error('Ошибка при проверке логина:', error);
@@ -108,7 +110,7 @@ export default {
         .test('unique-email', 'Почта уже существует', async (value) => {
           console.log(value);
           try {
-            const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/User/IsEmailTaken/${value}/0`);
+            const response = await api.get(`/api/User/IsEmailTaken/${value}/0`);
             return !response.data;
           } catch (error) {
             console.error('Ошибка при проверке почты:', error);
@@ -136,7 +138,7 @@ export default {
 
     const addUser = handleSubmit(async (values) => {
       try {
-        const response = await axios.post(`${import.meta.env.VITE_APP_BASE_URL}/api/User`, {
+        const response = await api.post(`/api/User`, {
           name: values.name,
           login: values.login,
           email: values.email,
@@ -174,7 +176,7 @@ export default {
 
     const fetchRoles = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_APP_BASE_URL}/api/Role/ListWithoutSorting`);
+        const response = await api.get(`/api/Role/ListWithoutSorting`);
         roles.value = response.data.map(role => ({
           text: role.name,
           value: role.id
@@ -209,7 +211,8 @@ export default {
       successMessage,
       firstCell,
       roles,
-      error
+      error,
+      permissions
     };
   },
 };
